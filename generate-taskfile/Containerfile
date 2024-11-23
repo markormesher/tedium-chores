@@ -8,7 +8,7 @@ RUN go mod download
 # source code
 COPY . .
 
-RUN make build
+RUN go build -o ./build/main cmd/*.go
 
 # ---
 
