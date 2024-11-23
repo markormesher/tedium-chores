@@ -6,7 +6,7 @@ import (
 )
 
 type ContainerImageProject struct {
-	ContainerFilePath   string
+	ContainerFileName   string
 	ProjectRelativePath string
 }
 
@@ -27,10 +27,10 @@ else
 fi
 
 # First build to get visible logs
-$builder build .
+$builder build . -f ` + p.ContainerFileName + `
 
 # Second (cached) build to get the image ID
-img=$($builder build -q .)
+img=$($builder build -q . -f ` + p.ContainerFileName + `)
 
 img_name=$($builder inspect $img | jq -rc '.[0].Config.Labels["image.name"]')
 img_registry=$($builder inspect $img | jq -rc '.[0].Config.Labels["image.registry"]')

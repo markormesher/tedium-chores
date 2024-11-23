@@ -139,7 +139,7 @@ func findSubProjects() (int, *SubProjectData) {
 	for i := range containerImagePaths {
 		countProjectsFound++
 		subProjects.ContainerImageProjects = append(subProjects.ContainerImageProjects, &ContainerImageProject{
-			ContainerFilePath:   containerImagePaths[i],
+			ContainerFileName:   path.Base(containerImagePaths[i]),
 			ProjectRelativePath: path.Dir(containerImagePaths[i]),
 		})
 	}

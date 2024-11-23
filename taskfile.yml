@@ -18,10 +18,10 @@ tasks:
           fi
 
           # First build to get visible logs
-          $builder build .
+          $builder build . -f Containerfile
 
           # Second (cached) build to get the image ID
-          img=$($builder build -q .)
+          img=$($builder build -q . -f Containerfile)
 
           img_name=$($builder inspect $img | jq -rc '.[0].Config.Labels["image.name"]')
           img_registry=$($builder inspect $img | jq -rc '.[0].Config.Labels["image.registry"]')
