@@ -1,5 +1,0 @@
-name: "Dummy chore"
-description: "This dummy chore creates a file at the repo root with the current date, just to test making a change."
-steps:
-  - image: "debian:bookworm"
-    command: "date -Iseconds > /tedium/repo/.tedium-testing-timestamp"
