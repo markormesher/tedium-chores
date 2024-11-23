@@ -1,0 +1,46 @@
+version: "3"
+tasks:
+  img-build:
+    cmds:
+      - task: img-build-generate-taskfile
+  img-build-generate-taskfile:
+    dir: '{{.ROOT_DIR}}/generate-taskfile'
+    cmds:
+      - cmd: |2
+          # First build to get visible logs
+          podman build .
+
+          # Second (cached) build to get the image ID
+          img=$(podman build -q .)
+
+          img_name=$(podman inspect $img | jq -rc '.[0].Config.Labels["image.name"]')
+          img_registry=$(podman inspect $img | jq -rc '.[0].Config.Labels["image.registry"]')
+          if [[ ! -z  "$img_name" ]]; then
+            podman tag "$img" "$img_name"
+
+          	if [[ ! -z "$img_registry" ]]; then
+          		podman tag "$img" "$img_registry/$img_name"
+          	fi
+          else
+            echo "Warning: no image name detected; this image has not been labelled" >&2
+          fi
+  lint:
+    cmds:
+      - task: lint-go-generate-taskfile
+  lint-fix:
+    cmds:
+      - task: lint-fix-go-generate-taskfile
+  lint-fix-go-generate-taskfile:
+    dir: '{{.ROOT_DIR}}/generate-taskfile'
+    cmds:
+      - cmd: gofmt -s -w .
+  lint-go-generate-taskfile:
+    dir: '{{.ROOT_DIR}}/generate-taskfile'
+    cmds:
+      - cmd: |-
+          lint_diff=$(gofmt -e -s -d .)
+          if [[ ! -z "$lint_diff" ]]; then
+            echo "Lint errors:"
+            echo "$lint_diff"
+            exit 1
+          fi
