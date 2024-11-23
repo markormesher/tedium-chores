@@ -36,9 +36,11 @@ img_name=$($builder inspect $img | jq -rc '.[0].Config.Labels["image.name"]')
 img_registry=$($builder inspect $img | jq -rc '.[0].Config.Labels["image.registry"]')
 if [[ ! -z  "$img_name" ]]; then
   $builder tag "$img" "$img_name"
+	echo "Tagged $img_name"
 
 	if [[ ! -z "$img_registry" ]]; then
 		$builder tag "$img" "$img_registry/$img_name"
+		echo "Tagged $img_registry/$img_name"
 	fi
 else
   echo "Warning: no image name detected; this image has not been labelled" >&2
