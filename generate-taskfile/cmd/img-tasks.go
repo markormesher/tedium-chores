@@ -16,6 +16,16 @@ func (p *ContainerImageProject) AddImageBuildTask(taskFile *TaskFile, parentTask
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []Command{
 			{Command: `
+# Podman or Docker?
+if command -v podman >/dev/null 2>&1; then
+  cmd=podmand
+elif command -v docker >/dev/null 2>&1; then
+  cmd=docker
+else
+  echo "Cannot find Podman or Docker installed - image will not be built" >&2
+	exit 1
+fi
+
 # First build to get visible logs
 podman build .
 

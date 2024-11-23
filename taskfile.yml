@@ -7,6 +7,16 @@ tasks:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     cmds:
       - cmd: |2
+          # Podman or Docker?
+          if command -v podman >/dev/null 2>&1; then
+            cmd=podmand
+          elif command -v docker >/dev/null 2>&1; then
+            cmd=docker
+          else
+            echo "Cannot find Podman or Docker installed - image will not be built" >&2
+          	exit 1
+          fi
+
           # First build to get visible logs
           podman build .
 
