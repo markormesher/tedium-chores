@@ -8,8 +8,7 @@ RUN go mod download
 # source code
 COPY . .
 
-#RUN make build
-RUN touch /app/build
+RUN make build
 
 # ---
 
