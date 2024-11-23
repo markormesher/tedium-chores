@@ -30,7 +30,7 @@ jobs:
           at: .
       - run: ./task lint
 
-  img-build:
+  img:
     <<: *defaults
     steps:
       - attach_workspace:
@@ -61,7 +61,7 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - img-build:
+      - img:
           requires:
             - lint
           filters:

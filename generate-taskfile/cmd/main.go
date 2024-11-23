@@ -60,15 +60,20 @@ func main() {
 		Commands: []Command{},
 	}
 
+	containerImagePushParentTask := Task{
+		Commands: []Command{},
+	}
+
 	output.Tasks["lint"] = &lintParentTask
 	output.Tasks["lint-fix"] = &lintFixParentTask
 	output.Tasks["img-build"] = &containerImageBuildParentTask
+	output.Tasks["img-push"] = &containerImagePushParentTask
 
 	// TODO: package init tasks
 
 	// lint tasks
 	for _, p := range subProjects.GoProjects {
-		err := p.AddLintTask(&output, &lintParentTask)
+		err = p.AddLintTask(&output, &lintParentTask)
 		if err != nil {
 			l.Error("Error generating Go lint task", "error", err)
 			os.Exit(1)
@@ -91,6 +96,12 @@ func main() {
 		err = p.AddImageBuildTask(&output, &containerImageBuildParentTask)
 		if err != nil {
 			l.Error("Error generating image build task", "error", err)
+			os.Exit(1)
+		}
+
+		err = p.AddImagePushTask(&output, &containerImagePushParentTask)
+		if err != nil {
+			l.Error("Error generating image push task", "error", err)
 			os.Exit(1)
 		}
 	}
