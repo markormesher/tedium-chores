@@ -37,15 +37,15 @@ jobs:
           at: .
       - setup_remote_docker:
           docker_layer_caching: true
-      - run: ./task img-build
-      # - run:
-      #     name: Maybe publish container image
-      #     command: |
-      #       if ! git describe --exact-match HEAD > /dev/null 2>&1; then echo "Not on tagged commit - nothing to do"; exit 0; fi
-      #       docker tag ghcr.io/markormesher/${CIRCLE_PROJECT_REPONAME}:$(git describe --tags) ghcr.io/markormesher/${CIRCLE_PROJECT_REPONAME}:latest
-      #       echo "${GHCR_PUBLISH_TOKEN}" | docker login ghcr.io -u markormesher --password-stdin
-      #       docker push ghcr.io/markormesher/${CIRCLE_PROJECT_REPONAME}:$(git describe --tags)
-      #       docker push ghcr.io/markormesher/${CIRCLE_PROJECT_REPONAME}:latest
+      - run:
+          name: Build container image
+          command: ./task img-build
+      - run:
+          name: Maybe Push container image
+          command: |
+            if ! git describe --exact-match HEAD >/dev/null 2>&1; then echo "Not on tagged commit - nothing to do"; exit 0; fi
+            echo "${GHCR_PUBLISH_TOKEN}" | docker login ghcr.io -u markormesher --password-stdin
+            ./task img-push
 
 workflows:
   version: 2
