@@ -1,0 +1,69 @@
+version: 2.1
+
+defaults: &defaults
+  working_directory: /tmp/app
+  docker:
+    - image: cimg/go:1.23.3
+
+jobs:
+  setup:
+    <<: *defaults
+    steps:
+      - checkout
+      - run:
+          name: Download Taskfile runner
+          command: |
+            wget https://github.com/go-task/task/releases/download/v3.40.0/task_linux_amd64.tar.gz
+            wget https://github.com/go-task/task/releases/download/v3.40.0/task_checksums.txt
+            sha256sum --check --ignore-missing task_checksums.txt
+            tar xf task_linux_amd64.tar.gz task
+            rm task_linux_amd64.tar.gz
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+
+  lint:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: .
+      - run: ./task lint
+
+  img:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: .
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Build container image
+          command: ./task img-build
+      - run:
+          name: Maybe Push container image
+          command: |
+            if ! git describe --exact-match HEAD >/dev/null 2>&1; then echo "Not on tagged commit - nothing to do"; exit 0; fi
+            echo "${GHCR_PUBLISH_TOKEN}" | docker login ghcr.io -u markormesher --password-stdin
+            ./task img-push
+
+workflows:
+  version: 2
+  main:
+    jobs:
+      - setup:
+          filters:
+            tags:
+              only: /.*/
+      - lint:
+          requires:
+            - setup
+          filters:
+            tags:
+              only: /.*/
+      - img:
+          requires:
+            - lint
+          filters:
+            tags:
+              only: /.*/

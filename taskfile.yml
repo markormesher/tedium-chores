@@ -1,0 +1,109 @@
+version: "3"
+tasks:
+  img-build:
+    cmds:
+      - task: img-build-generate-taskfile
+  img-build-generate-taskfile:
+    dir: '{{.ROOT_DIR}}/generate-taskfile'
+    cmds:
+      - cmd: |2
+          set -euo pipefail
+
+
+          # Podman or Docker?
+          if command -v podman >/dev/null 2>&1; then
+            builder=podman
+          elif command -v docker >/dev/null 2>&1; then
+            builder=docker
+          else
+            echo "Cannot find Podman or Docker installed - image will not be built" >&2
+            exit 1
+          fi
+
+          img_name=$( (grep "LABEL image.name=" Containerfile || echo) | head -n 1 | cut -d '=' -f 2-)
+          img_registry=$( (grep "LABEL image.registry=" Containerfile || echo) | head -n 1 | cut -d '=' -f 2-)
+          if git describe --tags >/dev/null 2>&1; then
+            version=":"$(git describe --tags)
+          else
+            version=""
+          fi
+
+
+          # First build to get visible logs
+          $builder build . -f Containerfile
+
+          # Second (cached) build to get the image ID
+          img=$($builder build -q . -f Containerfile)
+
+          if [[ ! -z "$img_name" ]]; then
+            $builder tag "$img" "localhost/${img_name}${version}"
+            echo "Tagged localhost/${img_name}${version}"
+
+            if [[ ! -z "$img_registry" ]]; then
+              $builder tag "$img" "${img_registry}/${img_name}${version}"
+              echo "Tagged ${img_registry}/${img_name}${version}"
+            fi
+          else
+            echo "Warning: no image name label; this image has not been tagged" >&2
+          fi
+  img-push:
+    cmds:
+      - task: img-push-generate-taskfile
+  img-push-generate-taskfile:
+    dir: '{{.ROOT_DIR}}/generate-taskfile'
+    cmds:
+      - cmd: |2
+          set -euo pipefail
+
+
+          # Podman or Docker?
+          if command -v podman >/dev/null 2>&1; then
+            builder=podman
+          elif command -v docker >/dev/null 2>&1; then
+            builder=docker
+          else
+            echo "Cannot find Podman or Docker installed - image will not be built" >&2
+            exit 1
+          fi
+
+          img_name=$( (grep "LABEL image.name=" Containerfile || echo) | head -n 1 | cut -d '=' -f 2-)
+          img_registry=$( (grep "LABEL image.registry=" Containerfile || echo) | head -n 1 | cut -d '=' -f 2-)
+          if git describe --tags >/dev/null 2>&1; then
+            version=":"$(git describe --tags)
+          else
+            version=""
+          fi
+
+
+          if [[ "$img_name" == "" ]]; then
+            echo "Cannot determine image name - image will not be pushed" >&2
+            exit 1
+          elif [[ "$img_registry" == "" ]]; then
+            echo "Cannot determine image registry - image will not be pushed" >&2
+            exit 1
+          elif [[ "$version" == "" ]]; then
+            echo "Cannot determine image version - image will not be pushed" >&2
+            exit 1
+          else
+            $builder push "${img_registry}/${img_name}${version}"
+          fi
+  lint:
+    cmds:
+      - task: lint-go-generate-taskfile
+  lint-fix:
+    cmds:
+      - task: lint-fix-go-generate-taskfile
+  lint-fix-go-generate-taskfile:
+    dir: '{{.ROOT_DIR}}/generate-taskfile'
+    cmds:
+      - cmd: gofmt -s -w .
+  lint-go-generate-taskfile:
+    dir: '{{.ROOT_DIR}}/generate-taskfile'
+    cmds:
+      - cmd: |-
+          lint_diff=$(gofmt -e -s -d .)
+          if [[ ! -z "$lint_diff" ]]; then
+            echo "Lint errors:"
+            echo "$lint_diff"
+            exit 1
+          fi

@@ -1,0 +1,23 @@
+FROM docker.io/golang:1.23.3@sha256:73f06be4578c9987ce560087e2e2ea6485fb605e3910542cadd8fa09fc5f3e31 as builder
+WORKDIR /app
+
+# deps
+COPY go.mod go.sum ./
+RUN go mod download
+
+# source code
+COPY . .
+
+RUN go build -o ./build/main cmd/*.go
+
+# ---
+
+FROM gcr.io/distroless/base-debian12@sha256:1aae189e3baecbb4044c648d356ddb75025b2ba8d14cdc9c2a19ba784c90bfb9
+WORKDIR /app
+
+LABEL image.registry=ghcr.io
+LABEL image.name=markormesher/tedium-chore-generate-taskfile
+
+COPY --from=builder /app/build /app/build
+
+CMD ["/app/build/main"]

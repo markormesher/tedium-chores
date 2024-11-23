@@ -1,0 +1,5 @@
+name: "Generate Taskfile"
+description: "This chore populates a [Taskfile](https://taskfile.dev) based on the contents of the repo."
+steps:
+  - image: "debian:bookworm"
+    command: "touch /tedium/repo/taskfile.yml"
