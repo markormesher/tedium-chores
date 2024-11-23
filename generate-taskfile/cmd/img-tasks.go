@@ -18,27 +18,27 @@ func (p *ContainerImageProject) AddImageBuildTask(taskFile *TaskFile, parentTask
 			{Command: `
 # Podman or Docker?
 if command -v podman >/dev/null 2>&1; then
-  cmd=podmand
+  builder=podman
 elif command -v docker >/dev/null 2>&1; then
-  cmd=docker
+  builder=docker
 else
   echo "Cannot find Podman or Docker installed - image will not be built" >&2
 	exit 1
 fi
 
 # First build to get visible logs
-podman build .
+$builder build .
 
 # Second (cached) build to get the image ID
-img=$(podman build -q .)
+img=$($builder build -q .)
 
-img_name=$(podman inspect $img | jq -rc '.[0].Config.Labels["image.name"]')
-img_registry=$(podman inspect $img | jq -rc '.[0].Config.Labels["image.registry"]')
+img_name=$($builder inspect $img | jq -rc '.[0].Config.Labels["image.name"]')
+img_registry=$($builder inspect $img | jq -rc '.[0].Config.Labels["image.registry"]')
 if [[ ! -z  "$img_name" ]]; then
-  podman tag "$img" "$img_name"
+  $builder tag "$img" "$img_name"
 
 	if [[ ! -z "$img_registry" ]]; then
-		podman tag "$img" "$img_registry/$img_name"
+		$builder tag "$img" "$img_registry/$img_name"
 	fi
 else
   echo "Warning: no image name detected; this image has not been labelled" >&2
