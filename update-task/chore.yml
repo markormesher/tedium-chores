@@ -7,5 +7,4 @@ steps:
       apt install -y --no-install-recommends curl ca-certificates jq
       latest_tag=$(curl --fail https://api.github.com/repos/go-task/task/releases | jq -rc '.[] | .tag_name' | grep -v 'alpha|beta|rc' | sort --version-sort | tail -n 1)
       echo "Latest version: ${latest_tag}"
-      echo sed -i -r "s#go-task\/task\/releases\/download\/v[0-9.]+\/#go-task/task/releases/download/${latest_tag}/#" $(find /tedium/repo -path '*/.circleci/config.yml' -or -path '*/.drone.yml')
       sed -i -r "s#go-task\/task\/releases\/download\/v[0-9.]+\/#go-task/task/releases/download/${latest_tag}/#" $(find /tedium/repo -path '*/.circleci/config.yml' -or -path '*/.drone.yml')
