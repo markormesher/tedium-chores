@@ -12,10 +12,11 @@ type ContainerImageProject struct {
 
 func (p *ContainerImageProject) jobSetup() string {
 	return `
-# Podman or Docker?
 if command -v podman >/dev/null 2>&1; then
+  # Podman for building locally or in Tatsu CI
   builder=podman
 elif command -v docker >/dev/null 2>&1; then
+  # Docker for building in Circle CI
   builder=docker
 else
   echo "Cannot find Podman or Docker installed - image will not be built" >&2
@@ -43,10 +44,10 @@ set -euo pipefail
 ` + p.jobSetup() + `
 
 # First build to get visible logs
-$builder build . -f ` + p.ContainerFileName + `
+$builder build -f ` + p.ContainerFileName + ` .
 
 # Second (cached) build to get the image ID
-img=$($builder build -q . -f ` + p.ContainerFileName + `)
+img=$($builder build -q -f ` + p.ContainerFileName + ` .)
 
 if [[ ! -z "$img_name" ]]; then
   $builder tag "$img" "localhost/${img_name}${version}"
