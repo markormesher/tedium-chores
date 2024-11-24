@@ -15,14 +15,13 @@ import (
 var jsonHandler = slog.NewJSONHandler(os.Stdout, nil)
 var l = slog.New(jsonHandler)
 
-var projectPath string
-
 func main() {
 	// read config and validate it
+	var projectPath string
 	flag.StringVar(&projectPath, "project", "/tedium/repo", "Project path to target")
 	flag.Parse()
 
-	projectPath := strings.TrimRight(projectPath, "/")
+	projectPath = strings.TrimRight(projectPath, "/")
 
 	stat, err := os.Stat(projectPath)
 	if err != nil {
@@ -36,7 +35,7 @@ func main() {
 	}
 
 	// determine languages/sub-projects in the projects
-	countSubProjects, subProjects := findSubProjects()
+	countSubProjects, subProjects := findSubProjects(projectPath)
 	if countSubProjects == 0 {
 		l.Error("No compatible sub-projects found in the project path")
 		os.Exit(1)
@@ -106,7 +105,23 @@ func main() {
 		}
 	}
 
+	// clean up output
+
+	multipleLineBreaks := regexp.MustCompile(`\n\n+`)
+	blankLines := regexp.MustCompile(`^\s*$`)
+
+	for t := range output.Tasks {
+		for c := range output.Tasks[t].Commands {
+			cmd := output.Tasks[t].Commands[c].Command
+			cmd = strings.TrimSpace(cmd)
+			cmd = blankLines.ReplaceAllString(cmd, "")
+			cmd = multipleLineBreaks.ReplaceAllString(cmd, "\n\n")
+			output.Tasks[t].Commands[c].Command = cmd
+		}
+	}
+
 	// write output
+
 	var outputBuffer bytes.Buffer
 	encoder := yaml.NewEncoder(&outputBuffer)
 	encoder.SetIndent(2)
@@ -123,7 +138,7 @@ func main() {
 	}
 }
 
-func findSubProjects() (int, *SubProjectData) {
+func findSubProjects(projectPath string) (int, *SubProjectData) {
 	countProjectsFound := 0
 	subProjects := SubProjectData{
 		ContainerImageProjects: make([]*ContainerImageProject, 0),
@@ -133,6 +148,7 @@ func findSubProjects() (int, *SubProjectData) {
 	// containers
 
 	containerImagePaths, err := find(
+		projectPath,
 		FIND_FILES,
 		[]*regexp.Regexp{
 			regexp.MustCompile(`.*/Dockerfile`),
@@ -158,6 +174,7 @@ func findSubProjects() (int, *SubProjectData) {
 	// go
 
 	goProjectPaths, err := find(
+		projectPath,
 		FIND_FILES,
 		[]*regexp.Regexp{
 			regexp.MustCompile(`.*/go\.mod`),

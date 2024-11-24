@@ -1,9 +1,8 @@
 package main
 
 import (
-	"fmt"
+	"io/fs"
 	"os"
-	"path"
 	"regexp"
 	"strings"
 )
@@ -13,71 +12,43 @@ var (
 	FIND_DIRS  = 2
 )
 
-func find(targets int, patterns []*regexp.Regexp, excludePatterns []*regexp.Regexp) ([]string, error) {
-	// TODO: replace with fs.WalkDir
-
+func find(projectPath string, targets int, patterns []*regexp.Regexp, excludePatterns []*regexp.Regexp) ([]string, error) {
 	findFiles := targets&FIND_FILES != 0
 	findDirs := targets&FIND_DIRS != 0
-
-	var directoryFrontier Queue[string]
-	directoriesVisited := make(map[string]bool)
 	matches := make([]string, 0)
 
-	directoryFrontier.Push(projectPath)
+	projectFs := os.DirFS(projectPath)
+	fs.WalkDir(projectFs, ".", func(path string, d fs.DirEntry, err error) error {
+		relativePath := strings.TrimPrefix(path, projectPath)
 
-	for {
-		directory, ok := directoryFrontier.Pop()
-		if !ok {
-			break
+		match := false
+
+		for i := range patterns {
+			if patterns[i].MatchString(relativePath) {
+				match = true
+				break
+			}
 		}
 
-		directoriesVisited[*directory] = true
-
-		entries, err := os.ReadDir(*directory)
-		if err != nil {
-			return nil, fmt.Errorf("error searching for files or directories: %w", err)
-		}
-
-		for _, entry := range entries {
-			// full path is needed to walk the project tree, but only the project-relative path is used by the rest of the program
-			fullPath := path.Join(*directory, entry.Name())
-			relativePath := strings.TrimPrefix(fullPath, projectPath)
-
-			match := false
-
-			for i := range patterns {
-				if patterns[i].MatchString(relativePath) {
-					match = true
+		if match {
+			for i := range excludePatterns {
+				if excludePatterns[i].MatchString(relativePath) {
+					match = false
 					break
 				}
 			}
-
-			if match {
-				for i := range excludePatterns {
-					if excludePatterns[i].MatchString(relativePath) {
-						match = false
-						break
-					}
-				}
-			}
-
-			if entry.Type().IsDir() {
-				if findDirs && match {
-					matches = append(matches, fullPath)
-				}
-
-				if !directoriesVisited[fullPath] {
-					directoryFrontier.Push(fullPath)
-				}
-			}
-
-			if entry.Type().IsRegular() {
-				if findFiles && match {
-					matches = append(matches, relativePath)
-				}
-			}
 		}
-	}
+
+		if match && findDirs && d.IsDir() {
+			matches = append(matches, path)
+		}
+
+		if match && findFiles && !d.IsDir() {
+			matches = append(matches, path)
+		}
+
+		return nil
+	})
 
 	return matches, nil
 }
