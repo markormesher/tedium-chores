@@ -20,7 +20,6 @@ func find(projectPath string, targets int, patterns []*regexp.Regexp, excludePat
 	projectFs := os.DirFS(projectPath)
 	fs.WalkDir(projectFs, ".", func(path string, d fs.DirEntry, err error) error {
 		relativePath := strings.TrimPrefix(path, projectPath)
-
 		match := false
 
 		for i := range patterns {
@@ -54,7 +53,7 @@ func find(projectPath string, targets int, patterns []*regexp.Regexp, excludePat
 }
 
 func pathToSafeName(path string) string {
-	if path == "/" {
+	if path == "." {
 		return "root"
 	}
 

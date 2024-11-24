@@ -151,11 +151,11 @@ func findSubProjects(projectPath string) (int, *SubProjectData) {
 		projectPath,
 		FIND_FILES,
 		[]*regexp.Regexp{
-			regexp.MustCompile(`.*/Dockerfile`),
-			regexp.MustCompile(`.*/Containerfile`),
+			regexp.MustCompile(`(^|/)Dockerfile`),
+			regexp.MustCompile(`(^|/)Containerfile`),
 		},
 		[]*regexp.Regexp{
-			regexp.MustCompile(`.*/\.git/.*`),
+			regexp.MustCompile(`(^|/)\.git/`),
 		},
 	)
 	if err != nil {
@@ -177,10 +177,10 @@ func findSubProjects(projectPath string) (int, *SubProjectData) {
 		projectPath,
 		FIND_FILES,
 		[]*regexp.Regexp{
-			regexp.MustCompile(`.*/go\.mod`),
+			regexp.MustCompile(`(^|/)go\.mod`),
 		},
 		[]*regexp.Regexp{
-			regexp.MustCompile(`.*/\.git/.*`),
+			regexp.MustCompile(`(^|/)\.git/`),
 		},
 	)
 	if err != nil {
