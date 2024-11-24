@@ -3,7 +3,6 @@ description: "This chore updates the version of [Task](https://taskfile.dev) use
 steps:
   - image: "debian:bookworm"
     command: |
-      set -euo pipefail
       apt update
       apt install -y --no-install-recommends curl ca-certificates jq
       latest_tag=$(curl --fail https://api.github.com/repos/go-task/task/releases | jq -rc '.[] | .tag_name' | grep -v 'alpha|beta|rc' | sort --version-sort | tail -n 1)
