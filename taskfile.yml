@@ -6,9 +6,8 @@ tasks:
   img-build-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     cmds:
-      - cmd: |2
+      - cmd: |-
           set -euo pipefail
-
 
           # Podman or Docker?
           if command -v podman >/dev/null 2>&1; then
@@ -27,7 +26,6 @@ tasks:
           else
             version=""
           fi
-
 
           # First build to get visible logs
           $builder build . -f Containerfile
@@ -52,9 +50,8 @@ tasks:
   img-push-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     cmds:
-      - cmd: |2
+      - cmd: |-
           set -euo pipefail
-
 
           # Podman or Docker?
           if command -v podman >/dev/null 2>&1; then
@@ -73,7 +70,6 @@ tasks:
           else
             version=""
           fi
-
 
           if [[ "$img_name" == "" ]]; then
             echo "Cannot determine image name - image will not be pushed" >&2

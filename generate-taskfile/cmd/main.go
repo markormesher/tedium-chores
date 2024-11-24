@@ -106,7 +106,23 @@ func main() {
 		}
 	}
 
+	// clean up output
+
+	multipleLineBreaks := regexp.MustCompile(`\n\n+`)
+	blankLines := regexp.MustCompile(`^\s*$`)
+
+	for t := range output.Tasks {
+		for c := range output.Tasks[t].Commands {
+			cmd := output.Tasks[t].Commands[c].Command
+			cmd = strings.TrimSpace(cmd)
+			cmd = blankLines.ReplaceAllString(cmd, "")
+			cmd = multipleLineBreaks.ReplaceAllString(cmd, "\n\n")
+			output.Tasks[t].Commands[c].Command = cmd
+		}
+	}
+
 	// write output
+
 	var outputBuffer bytes.Buffer
 	encoder := yaml.NewEncoder(&outputBuffer)
 	encoder.SetIndent(2)
