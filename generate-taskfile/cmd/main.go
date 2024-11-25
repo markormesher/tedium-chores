@@ -111,6 +111,12 @@ func main() {
 	blankLines := regexp.MustCompile(`^\s*$`)
 
 	for t := range output.Tasks {
+		if len(output.Tasks[t].Commands) == 0 {
+			// remove empty tasks
+			delete(output.Tasks, t)
+			continue
+		}
+
 		for c := range output.Tasks[t].Commands {
 			cmd := output.Tasks[t].Commands[c].Command
 			cmd = strings.TrimSpace(cmd)
