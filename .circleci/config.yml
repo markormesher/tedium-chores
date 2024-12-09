@@ -6,18 +6,23 @@ defaults: &defaults
     - image: cimg/go:1.23.4
 
 jobs:
-  setup:
+  checkout:
     <<: *defaults
     steps:
       - checkout
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+
+  fetch-task:
+    <<: *defaults
+    docker:
+      - image: ghcr.io/markormesher/task-fetcher:v0.2.0
+    steps:
       - run:
-          name: Download Taskfile runner
-          command: |
-            wget https://github.com/go-task/task/releases/download/v3.40.0/task_linux_amd64.tar.gz
-            wget https://github.com/go-task/task/releases/download/v3.40.0/task_checksums.txt
-            sha256sum --check --ignore-missing task_checksums.txt
-            tar xf task_linux_amd64.tar.gz task
-            rm task_linux_amd64.tar.gz
+          name: Fetch task binary
+          command: cp /task .
       - persist_to_workspace:
           root: .
           paths:
@@ -28,7 +33,9 @@ jobs:
     steps:
       - attach_workspace:
           at: .
-      - run: ./task lint
+      - run:
+          name: Lint
+          command: ./task lint
 
   img:
     <<: *defaults
@@ -41,7 +48,7 @@ jobs:
           name: Build container image
           command: ./task img-build
       - run:
-          name: Maybe Push container image
+          name: Maybe push container image
           command: |
             if ! git describe --exact-match HEAD >/dev/null 2>&1; then echo "Not on tagged commit - nothing to do"; exit 0; fi
             echo "${GHCR_PUBLISH_TOKEN}" | docker login ghcr.io -u markormesher --password-stdin
@@ -51,18 +58,25 @@ workflows:
   version: 2
   main:
     jobs:
-      - setup:
+      - checkout:
+          filters:
+            tags:
+              only: /.*/
+      - fetch-task:
           filters:
             tags:
               only: /.*/
       - lint:
           requires:
-            - setup
+            - checkout
+            - fetch-task
           filters:
             tags:
               only: /.*/
       - img:
           requires:
+            - checkout
+            - fetch-task
             - lint
           filters:
             tags:
