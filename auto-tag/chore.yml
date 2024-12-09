@@ -7,4 +7,4 @@ steps:
       cd /tedium/repo
       default_branch=$(git remote show origin | sed -n '/HEAD branch:/s/.*: //p')
       git checkout "$default_branch"
-      /app/main -P
+      /app/main -a -y -P
