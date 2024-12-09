@@ -7,6 +7,7 @@ steps:
       cd /tedium/repo
 
       # set up auth using the injected token
+      export GIT_COMMITTER_EMAIL="${TEDIUM_PLATFORM_EMAIL}"
       export GIT_CONFIG_COUNT=2
       export GIT_CONFIG_KEY_0="credential.username"
       export GIT_CONFIG_VALUE_0="x-access-token"
