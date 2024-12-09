@@ -3,4 +3,8 @@ description: "This chore auto-tags new releases using [semver-tagger](https://gi
 skipFinaliseStep: true
 steps:
   - image: "ghcr.io/markormesher/semver-tagger:v0.14.0"
-    command: "cd /tedium/repo && /app/main -P"
+    command: |
+      cd /tedium/repo
+      default_branch=$(git remote show origin | sed -n '/HEAD branch:/s/.*: //p')
+      git checkout "$default_branch"
+      /app/main -P
