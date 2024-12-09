@@ -2,7 +2,7 @@ name: "Tag new releases"
 description: "This chore auto-tags new releases using [semver-tagger](https://github.com/markormesher/semver-tagger)."
 skipFinaliseStep: true
 steps:
-  - image: "ghcr.io/markormesher/semver-tagger:v0.14.0"
+  - image: "ghcr.io/markormesher/semver-tagger:v0.16.0"
     command: |
       cd /tedium/repo
 
@@ -16,4 +16,4 @@ steps:
 
       git checkout "${TEDIUM_REPO_DEFAULT_BRANCH}"
 
-      /app/main -v -a -y -P
+      semver-tagger -v -a -y -P
