@@ -1,0 +1,6 @@
+name: "Auto-tag"
+description: "This chore auto-tags new releases using [semver-tagger](https://github.com/markormesher/semver-tagger)."
+skipFinaliseStep: true
+steps:
+  - image: "ghcr.io/markormesher/semver-tagger:v0.14.0"
+    command: "/app/build/main -P"
