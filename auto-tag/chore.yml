@@ -13,7 +13,6 @@ steps:
       export GIT_CONFIG_KEY_1="credential.helper"
       export GIT_CONFIG_VALUE_1='!h() { test "$1" = get && echo "password=${TEDIUM_PLATFORM_TOKEN}"; }; h'
 
-      default_branch=$(git remote show origin | sed -n '/HEAD branch:/s/.*: //p')
-      git checkout "$default_branch"
+      git checkout "${TEDIUM_REPO_DEFAULT_BRANCH}"
 
       /app/main -v -a -y -P
