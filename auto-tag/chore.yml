@@ -1,0 +1,19 @@
+name: "Auto-tag"
+description: "This chore auto-tags new releases using [semver-tagger](https://github.com/markormesher/semver-tagger)."
+skipFinaliseStep: true
+steps:
+  - image: "ghcr.io/markormesher/semver-tagger:v0.14.0"
+    command: |
+      cd /tedium/repo
+
+      # set up auth using the injected token
+      export GIT_COMMITTER_EMAIL="${TEDIUM_PLATFORM_EMAIL}"
+      export GIT_CONFIG_COUNT=2
+      export GIT_CONFIG_KEY_0="credential.username"
+      export GIT_CONFIG_VALUE_0="x-access-token"
+      export GIT_CONFIG_KEY_1="credential.helper"
+      export GIT_CONFIG_VALUE_1='!h() { test "$1" = get && echo "password=${TEDIUM_PLATFORM_TOKEN}"; }; h'
+
+      git checkout "${TEDIUM_REPO_DEFAULT_BRANCH}"
+
+      /app/main -v -a -y -P
