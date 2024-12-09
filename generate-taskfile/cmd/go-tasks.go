@@ -49,3 +49,21 @@ func (p *GoProject) AddLintFixTask(taskFile *TaskFile, parentTask *Task) error {
 
 	return nil
 }
+
+func (p *GoProject) AddTestTask(taskFile *TaskFile, parentTask *Task) error {
+	name := fmt.Sprintf("test-go-%s", pathToSafeName(p.ProjectRelativePath))
+	task := &Task{
+		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Commands: []Command{
+			{Command: `go test ./...`},
+		},
+	}
+
+	taskFile.Tasks[name] = task
+
+	if parentTask != nil {
+		parentTask.Commands = append(parentTask.Commands, Command{Task: name})
+	}
+
+	return nil
+}

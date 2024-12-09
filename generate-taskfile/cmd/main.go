@@ -55,6 +55,10 @@ func main() {
 		Commands: []Command{},
 	}
 
+	testParentTask := Task{
+		Commands: []Command{},
+	}
+
 	containerImageBuildParentTask := Task{
 		Commands: []Command{},
 	}
@@ -65,12 +69,14 @@ func main() {
 
 	output.Tasks["lint"] = &lintParentTask
 	output.Tasks["lint-fix"] = &lintFixParentTask
+	output.Tasks["test"] = &testParentTask
 	output.Tasks["img-build"] = &containerImageBuildParentTask
 	output.Tasks["img-push"] = &containerImagePushParentTask
 
 	// TODO: package init tasks
 
 	// lint tasks
+
 	for _, p := range subProjects.GoProjects {
 		err = p.AddLintTask(&output, &lintParentTask)
 		if err != nil {
@@ -85,7 +91,15 @@ func main() {
 		}
 	}
 
-	// TODO: test tasks
+	// test tasks
+
+	for _, p := range subProjects.GoProjects {
+		err = p.AddTestTask(&output, &testParentTask)
+		if err != nil {
+			l.Error("Error generating Go test task", "error", err)
+			os.Exit(1)
+		}
+	}
 
 	// TODO: project build tasks
 
