@@ -1,4 +1,4 @@
-name: "Auto-tag"
+name: "Tag new releases"
 description: "This chore auto-tags new releases using [semver-tagger](https://github.com/markormesher/semver-tagger)."
 skipFinaliseStep: true
 steps:
