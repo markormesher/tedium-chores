@@ -5,6 +5,15 @@ steps:
   - image: "ghcr.io/markormesher/semver-tagger:v0.14.0"
     command: |
       cd /tedium/repo
+
+      # set up auth using the injected token
+      export GIT_CONFIG_COUNT=2
+      export GIT_CONFIG_KEY_0="credential.username"
+      export GIT_CONFIG_VALUE_0="x-access-token"
+      export GIT_CONFIG_KEY_1="credential.helper"
+      export GIT_CONFIG_VALUE_1='!h() { test "$1" = get && echo "password=${TEDIUM_PLATFORM_TOKEN}"; }; h'
+
       default_branch=$(git remote show origin | sed -n '/HEAD branch:/s/.*: //p')
       git checkout "$default_branch"
+
       /app/main -v -a -y -P
