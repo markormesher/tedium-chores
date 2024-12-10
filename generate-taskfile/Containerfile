@@ -20,4 +20,4 @@ COPY --from=docker.io/busybox:1.37.0-glibc@sha256:0911a82648a678cf004e61d4ac4e80
 
 COPY --from=builder /app/build/main /usr/local/bin/generate-taskfile
 
-CMD ["generate-taskfile"]
+CMD ["/usr/local/bin/generate-taskfile"]
