@@ -44,7 +44,13 @@ func main() {
 	// init output and parent tasks
 	output := TaskFile{
 		Version: "3",
-		Tasks:   map[string]*Task{},
+		Includes: map[string]*IncludeTarget{
+			"local": {
+				TaskFile: "taskfile.local.yml",
+				Optional: true,
+			},
+		},
+		Tasks: map[string]*Task{},
 	}
 
 	lintParentTask := Task{

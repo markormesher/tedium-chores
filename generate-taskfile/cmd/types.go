@@ -6,9 +6,14 @@ type SubProjectData struct {
 }
 
 type TaskFile struct {
-	Version string `yaml:"version"`
+	Version  string                    `yaml:"version"`
+	Includes map[string]*IncludeTarget `yaml:"includes"`
+	Tasks    map[string]*Task          `yaml:"tasks"`
+}
 
-	Tasks map[string]*Task `yaml:"tasks"`
+type IncludeTarget struct {
+	TaskFile string `yaml:"taskfile"`
+	Optional bool   `yaml:"optional"`
 }
 
 type Task struct {
