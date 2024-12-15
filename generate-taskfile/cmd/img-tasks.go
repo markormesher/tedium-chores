@@ -25,9 +25,7 @@ fi
 
 img_name=$( (grep "LABEL image.name=" ` + p.ContainerFileName + ` || echo) | head -n 1 | cut -d '=' -f 2-)
 img_registry=$( (grep "LABEL image.registry=" ` + p.ContainerFileName + ` || echo) | head -n 1 | cut -d '=' -f 2-)
-if [[ -f .version ]]; then
-	version=":"$(cat .version)
-elif git describe --tags >/dev/null 2>&1; then
+if git describe --tags >/dev/null 2>&1; then
   version=":"$(git describe --tags)
 else
   version=""
