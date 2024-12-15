@@ -53,10 +53,20 @@ $builder build -f ` + p.ContainerFileName + ` .
 img=$($builder build -q -f ` + p.ContainerFileName + ` .)
 
 if [[ ! -z "$img_name" ]]; then
-  $builder tag "$img" "localhost/${img_name}${version:+:$version}"
+  # always tag non-versioned localhost image (useful for local dev workflows)
+  $builder tag "$img" "localhost/${img_name}"
+  echo "Tagged localhost/${img_name}"
 
-  if [[ ! -z "$img_registry" ]]; then
-    $builder tag "$img" "${img_registry}/${img_name}${version:+:$version}"
+  # tag versioned local image if we have a version number
+  if [[ ! -z "$version" ]]; then
+    $builder tag "$img" "localhost/${img_name}:${version}"
+    echo "Tagged localhost/${img_name}:${version}"
+  fi
+
+  # tag versioned remove image if we have a version number and a registry
+  if [[ ! -v "$version" ]] && [[ ! -z "$img_registry" ]]; then
+    $builder tag "$img" "${img_registry}/${img_name}:${version}"
+    echo "Tagged ${img_registry}/${img_name}:${version}"
   fi
 else
   echo "Warning: no image name label; this image has not been tagged" >&2
