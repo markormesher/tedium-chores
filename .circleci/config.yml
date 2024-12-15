@@ -18,7 +18,7 @@ jobs:
   fetch-task:
     <<: *defaults
     docker:
-      - image: ghcr.io/markormesher/task-fetcher:v0.4.0
+      - image: ghcr.io/markormesher/task-fetcher:v0.4.1
     steps:
       - run:
           name: Fetch task binary
