@@ -8,7 +8,7 @@ The supported/planned tasks are:
   - :hourglass: Install dependencies
   - :white_check_mark: Run linter
   - :white_check_mark: Apply lint fixes
-  - :hourglass: Run tests
+  - :white_check_mark: Run tests
   - :hourglass: Build
 - TypeScript
   - :hourglass: Install dependencies
