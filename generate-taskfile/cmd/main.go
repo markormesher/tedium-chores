@@ -65,6 +65,10 @@ func main() {
 		Commands: []Command{},
 	}
 
+	generateParentTask := Task{
+		Commands: []Command{},
+	}
+
 	containerImageBuildParentTask := Task{
 		Commands: []Command{},
 	}
@@ -76,6 +80,7 @@ func main() {
 	output.Tasks["lint"] = &lintParentTask
 	output.Tasks["lint-fix"] = &lintFixParentTask
 	output.Tasks["test"] = &testParentTask
+	output.Tasks["gen"] = &generateParentTask
 	output.Tasks["img-build"] = &containerImageBuildParentTask
 	output.Tasks["img-push"] = &containerImagePushParentTask
 
@@ -97,12 +102,30 @@ func main() {
 		}
 	}
 
+	for _, p := range subProjects.BufProjects {
+		err = p.AddLintTask(&output, &lintParentTask)
+		if err != nil {
+			l.Error("Error generating Buf lint task", "error", err)
+			os.Exit(1)
+		}
+	}
+
 	// test tasks
 
 	for _, p := range subProjects.GoProjects {
 		err = p.AddTestTask(&output, &testParentTask)
 		if err != nil {
 			l.Error("Error generating Go test task", "error", err)
+			os.Exit(1)
+		}
+	}
+
+	// generate tasks
+
+	for _, p := range subProjects.BufProjects {
+		err = p.AddGenerateTask(&output, &generateParentTask)
+		if err != nil {
+			l.Error("Error generating Buf generate task", "error", err)
 			os.Exit(1)
 		}
 	}
@@ -194,6 +217,30 @@ func findSubProjects(projectPath string) (int, *SubProjectData) {
 		subProjects.ContainerImageProjects = append(subProjects.ContainerImageProjects, &ContainerImageProject{
 			ContainerFileName:   path.Base(containerImagePaths[i]),
 			ProjectRelativePath: path.Dir(containerImagePaths[i]),
+		})
+	}
+
+	// buf
+
+	bufProjectPaths, err := find(
+		projectPath,
+		FIND_FILES,
+		[]*regexp.Regexp{
+			regexp.MustCompile(`(^|/)buf\.gen\.ya?ml`),
+		},
+		[]*regexp.Regexp{
+			regexp.MustCompile(`(^|/)\.git/`),
+		},
+	)
+	if err != nil {
+		l.Error("Error searching for Buf projects", "error", err)
+		os.Exit(1)
+	}
+
+	for i := range bufProjectPaths {
+		countProjectsFound++
+		subProjects.BufProjects = append(subProjects.BufProjects, &BufProject{
+			ProjectRelativePath: path.Dir(bufProjectPaths[i]),
 		})
 	}
 
