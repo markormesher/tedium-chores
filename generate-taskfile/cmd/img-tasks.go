@@ -101,8 +101,8 @@ else
   echo "Warning: no image name label; image will not be tagged" >&2
 fi
 
-echo "Image tags:"
-cat .imgrefs
+echo "Image refs:"
+cat .imgrefs | grep "." || echo "None"
 `},
 		},
 	}
