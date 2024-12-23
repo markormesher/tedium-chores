@@ -52,9 +52,9 @@ jobs:
           command: ./task img-build
       - run:
           name: Push container image
-          command:
-            - echo "${GHCR_PUBLISH_TOKEN}" | docker login ghcr.io -u markormesher --password-stdin
-            - ./task img-push
+          command: |
+            echo "${GHCR_PUBLISH_TOKEN}" | docker login ghcr.io -u markormesher --password-stdin
+            ./task img-push
 
 workflows:
   version: 2
