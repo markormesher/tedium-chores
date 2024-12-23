@@ -18,23 +18,23 @@ The nested task structure is generally **per-type -> per-language -> per-project
 
 - `gen` _(code generation)_
   - `gen-buf`
-    - ...per-project tasks
+    - _per-project tasks_
 - `lint`
   - `lint-buf`
-    - ...per-project tasks
+    - _per-project tasks_
   - `lint-go`
-    - ...per-project tasks
+    - _per-project tasks_
 - `lintfix`
   - `lintfix-go`
-    - ...per-project tasks
+    - _per-project tasks_
 - `test`
   - `test-go`
-    - ...per-project tasks
+    - _per-project tasks_
 - `imgrefs`
-  - ...per-project tasks
+  - _per-project tasks_
 - `imgbuild`
-  - ...per-project tasks
+  - _per-project tasks_
 - `imgpush`
-  - ...per-project tasks
+  - _per-project tasks_
 
 Note that `img*` projects do not have a middle per-project level.
