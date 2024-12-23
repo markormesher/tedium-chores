@@ -28,7 +28,6 @@ func (p *BufProject) AddTasks(taskFile *TaskFile) error {
 func (p *BufProject) addLintTask(taskFile *TaskFile) error {
 	name := fmt.Sprintf("lint-buf-%s", pathToSafeName(p.ProjectRelativePath))
 	taskFile.Tasks[name] = &Task{
-		Internal:  true,
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []Command{
 			{Command: `buf lint`},
@@ -41,7 +40,6 @@ func (p *BufProject) addLintTask(taskFile *TaskFile) error {
 func (p *BufProject) addGenTask(taskFile *TaskFile) error {
 	name := fmt.Sprintf("gen-buf-%s", pathToSafeName(p.ProjectRelativePath))
 	taskFile.Tasks[name] = &Task{
-		Internal:  true,
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []Command{
 			{Command: `buf generate`},

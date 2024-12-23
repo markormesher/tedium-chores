@@ -43,9 +43,8 @@ fi
 }
 
 func (p *ImgProject) addRefsTask(taskFile *TaskFile) error {
-	name := fmt.Sprintf("img-refs-%s", pathToSafeName(p.ProjectRelativePath))
+	name := fmt.Sprintf("imgrefs-%s", pathToSafeName(p.ProjectRelativePath))
 	taskFile.Tasks[name] = &Task{
-		Internal:  true,
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []Command{
 			{Command: `
@@ -111,12 +110,11 @@ cat .imgrefs | grep "." || echo "None"
 }
 
 func (p *ImgProject) addBuildTask(taskFile *TaskFile) error {
-	name := fmt.Sprintf("img-build-%s", pathToSafeName(p.ProjectRelativePath))
+	name := fmt.Sprintf("imgbuild-%s", pathToSafeName(p.ProjectRelativePath))
 	taskFile.Tasks[name] = &Task{
-		Internal:  true,
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Dependencies: []string{
-			fmt.Sprintf("img-refs-%s", pathToSafeName(p.ProjectRelativePath)),
+			fmt.Sprintf("imgrefs-%s", pathToSafeName(p.ProjectRelativePath)),
 		},
 		Commands: []Command{
 			{Command: `
@@ -144,10 +142,12 @@ fi
 }
 
 func (p *ImgProject) addPushTask(taskFile *TaskFile) error {
-	name := fmt.Sprintf("img-push-%s", pathToSafeName(p.ProjectRelativePath))
+	name := fmt.Sprintf("imgpush-%s", pathToSafeName(p.ProjectRelativePath))
 	taskFile.Tasks[name] = &Task{
-		Internal:  true,
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Dependencies: []string{
+			fmt.Sprintf("imgrefs-%s", pathToSafeName(p.ProjectRelativePath)),
+		},
 		Commands: []Command{
 			{Command: `
 set -euo pipefail
@@ -159,6 +159,9 @@ if [[ -f .imgrefs ]]; then
     $builder push "${tag}"
     echo "Pushed ${tag}"
   done
+else
+  echo "No .imgrefs file - nothing will be pushed"
+	exit 1
 fi
 `},
 		},

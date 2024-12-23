@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
-	"maps"
 	"os"
 	"path"
 	"regexp"
@@ -80,28 +79,36 @@ func main() {
 		}
 	}
 
-	// layer 1 and 2 tasks
-	layer3Names := slices.Collect(maps.Keys(output.Tasks))
+	// collect names of layer-3 tasks that will be exposed
+	layer3Names := make([]string, 0)
+	for name, task := range output.Tasks {
+		if !task.Internal {
+			layer3Names = append(layer3Names, name)
+		}
+	}
+
+	// sort names to keep output ordering consistent
+	slices.Sort(layer3Names)
+
+	// generate layer-1 and layer-2 tasks
 	for _, name := range layer3Names {
 		nameChunks := strings.Split(name, "-")
-		if len(nameChunks) < 3 {
-			l.Error("Found invalid task name", "name", name)
-			os.Exit(1)
-		}
 
+		// all tasks have a layer-1 parent
 		layer1Name := nameChunks[0]
-		layer2Name := fmt.Sprintf("%s-%s", nameChunks[0], nameChunks[1])
-
 		if _, ok := output.Tasks[layer1Name]; !ok {
 			output.Tasks[layer1Name] = &Task{}
 		}
-
-		if _, ok := output.Tasks[layer2Name]; !ok {
-			output.Tasks[layer2Name] = &Task{}
-		}
-
 		output.Tasks[layer1Name].Commands = append(output.Tasks[layer1Name].Commands, Command{Task: name})
-		output.Tasks[layer2Name].Commands = append(output.Tasks[layer2Name].Commands, Command{Task: name})
+
+		// not all tasks have layer-2 parent
+		if len(nameChunks) > 2 {
+			layer2Name := fmt.Sprintf("%s-%s", nameChunks[0], nameChunks[1])
+			if _, ok := output.Tasks[layer2Name]; !ok {
+				output.Tasks[layer2Name] = &Task{}
+			}
+			output.Tasks[layer2Name].Commands = append(output.Tasks[layer2Name].Commands, Command{Task: name})
+		}
 	}
 
 	// clean up output

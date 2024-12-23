@@ -4,19 +4,16 @@ includes:
     taskfile: taskfile.local.yml
     optional: true
 tasks:
-  img:
+  imgbuild:
     cmds:
-      - task: img-refs-generate-taskfile
-      - task: img-build-generate-taskfile
-      - task: img-push-generate-taskfile
-  img-build:
+      - task: imgbuild-generate-taskfile
+  imgbuild-generate:
     cmds:
-      - task: img-build-generate-taskfile
-  img-build-generate-taskfile:
+      - task: imgbuild-generate-taskfile
+  imgbuild-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     deps:
-      - img-refs-generate-taskfile
-    internal: true
+      - imgrefs-generate-taskfile
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -44,12 +41,16 @@ tasks:
               echo "Tagged ${tag}"
             done
           fi
-  img-push:
+  imgpush:
     cmds:
-      - task: img-push-generate-taskfile
-  img-push-generate-taskfile:
+      - task: imgpush-generate-taskfile
+  imgpush-generate:
+    cmds:
+      - task: imgpush-generate-taskfile
+  imgpush-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
-    internal: true
+    deps:
+      - imgrefs-generate-taskfile
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -70,13 +71,18 @@ tasks:
               $builder push "${tag}"
               echo "Pushed ${tag}"
             done
+          else
+            echo "No .imgrefs file - nothing will be pushed"
+          	exit 1
           fi
-  img-refs:
+  imgrefs:
     cmds:
-      - task: img-refs-generate-taskfile
-  img-refs-generate-taskfile:
+      - task: imgrefs-generate-taskfile
+  imgrefs-generate:
+    cmds:
+      - task: imgrefs-generate-taskfile
+  imgrefs-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
-    internal: true
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -141,7 +147,6 @@ tasks:
       - task: lint-go-generate-taskfile
   lint-go-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
-    internal: true
     cmds:
       - cmd: |-
           lint_diff=$(gofmt -e -s -d .)
@@ -158,7 +163,6 @@ tasks:
       - task: lintfix-go-generate-taskfile
   lintfix-go-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
-    internal: true
     cmds:
       - cmd: gofmt -s -w .
   test:
@@ -169,6 +173,5 @@ tasks:
       - task: test-go-generate-taskfile
   test-go-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
-    internal: true
     cmds:
       - cmd: go test ./...

@@ -29,7 +29,6 @@ func (p *GoProject) AddTasks(taskFile *TaskFile) error {
 func (p *GoProject) addLintTask(taskFile *TaskFile) error {
 	name := fmt.Sprintf("lint-go-%s", pathToSafeName(p.ProjectRelativePath))
 	taskFile.Tasks[name] = &Task{
-		Internal:  true,
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []Command{
 			{Command: `lint_diff=$(gofmt -e -s -d .)
@@ -47,7 +46,6 @@ fi`},
 func (p *GoProject) addLintFixTask(taskFile *TaskFile) error {
 	name := fmt.Sprintf("lintfix-go-%s", pathToSafeName(p.ProjectRelativePath))
 	taskFile.Tasks[name] = &Task{
-		Internal:  true,
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []Command{
 			{Command: `gofmt -s -w .`},
@@ -60,7 +58,6 @@ func (p *GoProject) addLintFixTask(taskFile *TaskFile) error {
 func (p *GoProject) addTestTask(taskFile *TaskFile) error {
 	name := fmt.Sprintf("test-go-%s", pathToSafeName(p.ProjectRelativePath))
 	taskFile.Tasks[name] = &Task{
-		Internal:  true,
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []Command{
 			{Command: `go test ./...`},

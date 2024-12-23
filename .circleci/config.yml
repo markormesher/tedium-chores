@@ -45,7 +45,9 @@ jobs:
           name: Build and push container image
           command: |
             echo "${GHCR_PUBLISH_TOKEN}" | docker login ghcr.io -u markormesher --password-stdin
-            ./task img
+            ./task imgrefs
+            ./task imgbuild
+            ./task imgpush
 
   ci-all:
     docker:

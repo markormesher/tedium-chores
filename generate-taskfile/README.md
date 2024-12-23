@@ -17,16 +17,24 @@ The nested task structure is generally **per-type -> per-language -> per-project
 ## Supported Tasks
 
 - `gen` _(code generation)_
-  - `gen-buf-*`
+  - `gen-buf`
+    - ...per-project tasks
 - `lint`
-  - `lint-buf-*`
-  - `lint-go-*`
+  - `lint-buf`
+    - ...per-project tasks
+  - `lint-go`
+    - ...per-project tasks
 - `lintfix`
-  - `lintfix-go-*`
+  - `lintfix-go`
+    - ...per-project tasks
 - `test`
-  - `test-go-*`
-- `img` _(container image publishing)_
-  - `img-build-*`
-  - `img-push-*`
+  - `test-go`
+    - ...per-project tasks
+- `imgrefs`
+  - ...per-project tasks
+- `imgbuild`
+  - ...per-project tasks
+- `imgpush`
+  - ...per-project tasks
 
-Note that `img` tasks use the second layer for different stages rather than different languages as they require different tools (`refs` requires Git, `build` and `push` require Podman or Docker).
+Note that `img*` projects do not have a middle per-project level.
