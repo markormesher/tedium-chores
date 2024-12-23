@@ -60,17 +60,29 @@ workflows:
   version: 2
   main:
     jobs:
-      - checkout: {}
-      - fetch-task: {}
+      - checkout:
+          filters:
+            tags:
+              only: /.*/
+      - fetch-task:
+          filters:
+            tags:
+              only: /.*/
       - lint-go:
           requires:
             - checkout
             - fetch-task
+          filters:
+            tags:
+              only: /.*/
       - img:
           requires:
             - checkout
             - fetch-task
             - lint-go
+          filters:
+            tags:
+              only: /.*/
       - ci-all:
           requires:
             - checkout
