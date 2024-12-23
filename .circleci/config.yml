@@ -42,16 +42,16 @@ jobs:
       - setup_remote_docker:
           docker_layer_caching: true
       - run:
-          name: Generate container image tags
-          command: ./task img-tags
-      - run:
-          name: Build container image
-          command: ./task img-build
-      - run:
-          name: Push container image
+          name: Build and push container image
           command: |
             echo "${GHCR_PUBLISH_TOKEN}" | docker login ghcr.io -u markormesher --password-stdin
-            ./task img-push
+            ./task img
+
+  ci-all:
+    docker:
+      - image: cimg/base:2024.12
+    steps:
+      - echo "Done"
 
 workflows:
   version: 2
@@ -77,6 +77,15 @@ workflows:
             - checkout
             - fetch-task
             - lint-go
+          filters:
+            tags:
+              only: /.*/
+      - ci-all:
+          requires:
+            - checkout
+            - fetch-task
+            - lint-go
+            - img
           filters:
             tags:
               only: /.*/
