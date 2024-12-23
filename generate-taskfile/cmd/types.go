@@ -2,6 +2,7 @@ package main
 
 type SubProjectData struct {
 	ContainerImageProjects []*ContainerImageProject
+	BufProjects            []*BufProject
 	GoProjects             []*GoProject
 }
 
