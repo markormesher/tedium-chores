@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"path"
+	"regexp"
 )
 
 type GoProject struct {
@@ -56,6 +57,22 @@ func (p *GoProject) addLintFixTask(taskFile *TaskFile) error {
 }
 
 func (p *GoProject) addTestTask(taskFile *TaskFile) error {
+	testFiles, err := find(
+		p.ProjectRelativePath,
+		FIND_FILES,
+		[]*regexp.Regexp{
+			regexp.MustCompile(`.*_test\.go`),
+		},
+		[]*regexp.Regexp{},
+	)
+	if err != nil {
+		return fmt.Errorf("error checking for Go test files: %w", err)
+	}
+
+	if len(testFiles) == 0 {
+		return nil
+	}
+
 	name := fmt.Sprintf("test-go-%s", pathToSafeName(p.ProjectRelativePath))
 	taskFile.Tasks[name] = &Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
