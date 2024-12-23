@@ -51,7 +51,8 @@ jobs:
     docker:
       - image: cimg/base:2024.12
     steps:
-      - echo "Done"
+      - run:
+          command: echo "Done"
 
 workflows:
   version: 2
