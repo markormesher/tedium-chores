@@ -77,3 +77,6 @@ workflows:
             - fetch-task
             - lint-go
             - img
+          filters:
+            tags:
+              only: /.*/
