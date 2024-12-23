@@ -1,7 +1,7 @@
 package main
 
 type SubProjectData struct {
-	ContainerImageProjects []*ContainerImageProject
+	ContainerImageProjects []*ImgProject
 	BufProjects            []*BufProject
 	GoProjects             []*GoProject
 }
@@ -18,11 +18,17 @@ type IncludeTarget struct {
 }
 
 type Task struct {
-	Directory string    `yaml:"dir,omitempty"`
-	Commands  []Command `yaml:"cmds"`
+	Directory    string    `yaml:"dir,omitempty"`
+	Dependencies []string  `yaml:"deps,omitempty"`
+	Sources      []string  `yaml:"sources,omitempty"`
+	Generates    []string  `yaml:"generates,omitempty"`
+	Internal     bool      `yaml:"internal,omitempty"`
+	Commands     []Command `yaml:"cmds"`
 }
 
 type Command struct {
 	Command string `yaml:"cmd,omitempty"`
 	Task    string `yaml:"task,omitempty"`
 }
+
+type TaskAdder func(taskFile *TaskFile) error

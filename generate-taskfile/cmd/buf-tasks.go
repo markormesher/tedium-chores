@@ -9,37 +9,41 @@ type BufProject struct {
 	ProjectRelativePath string
 }
 
-func (p *BufProject) AddLintTask(taskFile *TaskFile, parentTask *Task) error {
+func (p *BufProject) AddTasks(taskFile *TaskFile) error {
+	adders := []TaskAdder{
+		p.addLintTask,
+		p.addGenTask,
+	}
+
+	for _, f := range adders {
+		err := f(taskFile)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (p *BufProject) addLintTask(taskFile *TaskFile) error {
 	name := fmt.Sprintf("lint-buf-%s", pathToSafeName(p.ProjectRelativePath))
-	task := &Task{
+	taskFile.Tasks[name] = &Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []Command{
 			{Command: `buf lint`},
 		},
 	}
 
-	taskFile.Tasks[name] = task
-
-	if parentTask != nil {
-		parentTask.Commands = append(parentTask.Commands, Command{Task: name})
-	}
-
 	return nil
 }
 
-func (p *BufProject) AddGenerateTask(taskFile *TaskFile, parentTask *Task) error {
+func (p *BufProject) addGenTask(taskFile *TaskFile) error {
 	name := fmt.Sprintf("gen-buf-%s", pathToSafeName(p.ProjectRelativePath))
-	task := &Task{
+	taskFile.Tasks[name] = &Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []Command{
 			{Command: `buf generate`},
 		},
-	}
-
-	taskFile.Tasks[name] = task
-
-	if parentTask != nil {
-		parentTask.Commands = append(parentTask.Commands, Command{Task: name})
 	}
 
 	return nil

@@ -1,22 +1,40 @@
 # Chore: Generate Taskfile
 
-This [Tedium](https://github.com/markormesher/tedium) chore generates a [Taskfile](https://taskfile.dev) for each project in a repo.
+This [Tedium](https://github.com/markormesher/tedium) chore generates a [Taskfile](https://taskfile.dev) with a hierarchy of tasks suitable for both local dev and remote CI in multi-language projects.
 
-The supported/planned tasks are:
+The nested task structure is generally **per-type -> per-language -> per-project**, with each layer functioning as follows:
 
+- Per-type tasks, e.g. `lint` or `test`, include all tasks of their type. These tasks contain no real logic, they only include sub-tasks. These are intended to be run in local development environments, where all the languages and dependencies for a project are expected to be installed.
+- Per-language tasks, e.g. `lint-go` or `test-js`, include all tasks of their type for a given language. These tasks also contain no real logic. These are intended to be run in CI environments, making it easy to run separate steps for each language.
+- Per-project tasks, e.g. `lint-go-root` or `test-js-frontend`, contain the actual logic to run a given type of task, for a given language, within a specific project.
+
+## Supported Languages / Tools
+
+- [Buf](https://buf.build)
 - Go
-  - :hourglass: Install dependencies
-  - :white_check_mark: Run linter
-  - :white_check_mark: Apply lint fixes
-  - :white_check_mark: Run tests
-  - :hourglass: Build
-- TypeScript
-  - :hourglass: Install dependencies
-  - :hourglass: Run linter
-  - :hourglass: Apply lint fixes
-  - :hourglass: Run tests
-  - :hourglass: Build
 - Container images (via `Containerfile` or `Dockerfile`)
-  - :white_check_mark: Build and tag image
-    - Note: depends on `image.name` and optional `image.regsitry` labels
-  - :white_check_mark: Push image
+
+## Supported Tasks
+
+- `gen` _(code generation)_
+  - `gen-buf`
+    - _per-project tasks_
+- `lint`
+  - `lint-buf`
+    - _per-project tasks_
+  - `lint-go`
+    - _per-project tasks_
+- `lintfix`
+  - `lintfix-go`
+    - _per-project tasks_
+- `test`
+  - `test-go`
+    - _per-project tasks_
+- `imgrefs`
+  - _per-project tasks_
+- `imgbuild`
+  - _per-project tasks_
+- `imgpush`
+  - _per-project tasks_
+
+Note that `img*` projects do not have a middle per-project level.

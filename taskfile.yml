@@ -4,11 +4,16 @@ includes:
     taskfile: taskfile.local.yml
     optional: true
 tasks:
-  img-build:
+  imgbuild:
     cmds:
-      - task: img-build-generate-taskfile
-  img-build-generate-taskfile:
+      - task: imgbuild-generate-taskfile
+  imgbuild-generate:
+    cmds:
+      - task: imgbuild-generate-taskfile
+  imgbuild-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
+    deps:
+      - imgrefs-generate-taskfile
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -20,21 +25,8 @@ tasks:
             # Docker for building in Circle CI
             builder=docker
           else
-            echo "Cannot find Podman or Docker installed - image will not be built" >&2
+            echo "Cannot find Podman or Docker" >&2
             exit 1
-          fi
-
-          img_name=$( (grep "LABEL image.name=" Containerfile || echo) | head -n 1 | cut -d '=' -f 2-)
-          img_registry=$( (grep "LABEL image.registry=" Containerfile || echo) | head -n 1 | cut -d '=' -f 2-)
-          if [[ -f .version ]]; then
-            version=$(cat .version)
-          elif git describe --tags >/dev/null 2>&1; then
-            version=$(git describe --tags)
-            major_version=$(echo "${version}" | cut -d '.' -f 1)
-            latest_version_overall=$(git tag -l | sort --reverse --version-sort | head -n 1)
-            latest_version_within_major=$(git tag -l | grep "^${major_version}" | sort --reverse --version-sort | head -n 1)
-          else
-            version=""
           fi
 
           # First build to get visible logs
@@ -43,30 +35,22 @@ tasks:
           # Second (cached) build to get the image ID
           img=$($builder build -q -f Containerfile .)
 
-          if [[ ! -z "$img_name" ]]; then
-            # always tag non-versioned localhost image (useful for local dev workflows)
-            $builder tag "$img" "localhost/${img_name}"
-            echo "Tagged localhost/${img_name}"
-
-            # tag versioned local image if we have a version number
-            if [[ ! -z "$version" ]]; then
-              $builder tag "$img" "localhost/${img_name}:${version}"
-              echo "Tagged localhost/${img_name}:${version}"
-            fi
-
-            # tag versioned remote image if we have a version number and a registry
-            if [[ ! -v "$version" ]] && [[ ! -z "$img_registry" ]]; then
-              $builder tag "$img" "${img_registry}/${img_name}:${version}"
-              echo "Tagged ${img_registry}/${img_name}:${version}"
-            fi
-          else
-            echo "Warning: no image name label; this image has not been tagged" >&2
+          if [[ -f .imgrefs ]]; then
+            cat .imgrefs | while read tag; do
+              $builder tag "$img" "${tag}"
+              echo "Tagged ${tag}"
+            done
           fi
-  img-push:
+  imgpush:
     cmds:
-      - task: img-push-generate-taskfile
-  img-push-generate-taskfile:
+      - task: imgpush-generate-taskfile
+  imgpush-generate:
+    cmds:
+      - task: imgpush-generate-taskfile
+  imgpush-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
+    deps:
+      - imgrefs-generate-taskfile
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -78,55 +62,89 @@ tasks:
             # Docker for building in Circle CI
             builder=docker
           else
-            echo "Cannot find Podman or Docker installed - image will not be built" >&2
+            echo "Cannot find Podman or Docker" >&2
+            exit 1
+          fi
+
+          if [[ -f .imgrefs ]]; then
+            cat .imgrefs | (grep -v "^localhost" || :) | while read tag; do
+              $builder push "${tag}"
+              echo "Pushed ${tag}"
+            done
+          else
+            echo "No .imgrefs file - nothing will be pushed"
+          	exit 1
+          fi
+  imgrefs:
+    cmds:
+      - task: imgrefs-generate-taskfile
+  imgrefs-generate:
+    cmds:
+      - task: imgrefs-generate-taskfile
+  imgrefs-generate-taskfile:
+    dir: '{{.ROOT_DIR}}/generate-taskfile'
+    cmds:
+      - cmd: |-
+          set -euo pipefail
+
+          if [[ -f .imgrefs ]] && [[ ${CI+y} == "y" ]]; then
+            echo "Skipping re-computing tags"
+            exit 0
+          fi
+
+          if ! command -v git >/dev/null 2>&1; then
+            echo "Cannot find git" >&2
+            exit 1
+          fi
+
+          if ! git describe --tags >/dev/null 2>&1; then
+            echo "No git tags to descibe" >&2
+            exit 1
+          fi
+
+          if ! grep ".imgrefs" .gitignore >/dev/null 2>&1; then
+            echo ".gitignore must include .imgrefs to use the image builder tasks" >&2
             exit 1
           fi
 
           img_name=$( (grep "LABEL image.name=" Containerfile || echo) | head -n 1 | cut -d '=' -f 2-)
           img_registry=$( (grep "LABEL image.registry=" Containerfile || echo) | head -n 1 | cut -d '=' -f 2-)
-          if [[ -f .version ]]; then
-            version=$(cat .version)
-          elif git describe --tags >/dev/null 2>&1; then
-            version=$(git describe --tags)
-            major_version=$(echo "${version}" | cut -d '.' -f 1)
-            latest_version_overall=$(git tag -l | sort --reverse --version-sort | head -n 1)
-            latest_version_within_major=$(git tag -l | grep "^${major_version}" | sort --reverse --version-sort | head -n 1)
+
+          version=$(git describe --tags)
+          is_exact_tag=$(git describe --tags --exact-match >/dev/null 2>&1 && echo y || echo n)
+          major_version=$(echo "${version}" | cut -d '.' -f 1)
+          latest_version_overall=$(git tag -l | sort -r -V | head -n 1)
+          latest_version_within_major=$(git tag -l | grep "^${major_version}" | sort -r -V | head -n 1)
+
+          echo -n "" > .imgrefs
+
+          if [[ ! -z "$img_name" ]]; then
+            echo "localhost/${img_name}" >> .imgrefs
+            echo "localhost/${img_name}:${version}" >> .imgrefs
+
+            if [[ ! -z "$img_registry" ]] && [[ ${CI+y} == "y" ]]; then
+              echo "${img_registry}/${img_name}:${version}" >> .imgrefs
+
+              if [[ "${is_exact_tag}" == "y" ]] && [[ "${version}" == "${latest_version_within_major}" ]]; then
+                echo "${img_registry}/${img_name}:${major_version}" >> .imgrefs
+              fi
+
+              if [[ "${is_exact_tag}" == "y" ]] && [[ "${version}" == "${latest_version_overall}" ]]; then
+                echo "${img_registry}/${img_name}:latest" >> .imgrefs
+              fi
+            fi
           else
-            version=""
+            echo "Warning: no image name label; image will not be tagged" >&2
           fi
 
-          if [[ "$img_name" == "" ]]; then
-            echo "Cannot determine image name - image will not be pushed" >&2
-            exit 1
-          elif [[ "$img_registry" == "" ]]; then
-            echo "Cannot determine image registry - image will not be pushed" >&2
-            exit 1
-          elif [[ "$version" == "" ]]; then
-            echo "Cannot determine image version - image will not be pushed" >&2
-            exit 1
-          else
-            $builder push "${img_registry}/${img_name}:${version}"
-
-            if [[ "${version}" == "${latest_version_within_major}" ]]; then
-              $builder tag "${img_registry}/${img_name}:${version}" "${img_registry}/${img_name}:${major_version}"
-              $builder push "${img_registry}/${img_name}:${major_version}"
-            fi
-
-            if [[ "${version}" == "${latest_version_overall}" ]]; then
-              $builder tag "${img_registry}/${img_name}:${version}" "${img_registry}/${img_name}:latest"
-              $builder push "${img_registry}/${img_name}:latest"
-            fi
-          fi
+          echo "Image refs:"
+          cat .imgrefs | grep "." || echo "None"
   lint:
     cmds:
       - task: lint-go-generate-taskfile
-  lint-fix:
+  lint-go:
     cmds:
-      - task: lint-fix-go-generate-taskfile
-  lint-fix-go-generate-taskfile:
-    dir: '{{.ROOT_DIR}}/generate-taskfile'
-    cmds:
-      - cmd: gofmt -s -w .
+      - task: lint-go-generate-taskfile
   lint-go-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     cmds:
@@ -137,7 +155,20 @@ tasks:
             echo "$lint_diff"
             exit 1
           fi
+  lintfix:
+    cmds:
+      - task: lintfix-go-generate-taskfile
+  lintfix-go:
+    cmds:
+      - task: lintfix-go-generate-taskfile
+  lintfix-go-generate-taskfile:
+    dir: '{{.ROOT_DIR}}/generate-taskfile'
+    cmds:
+      - cmd: gofmt -s -w .
   test:
+    cmds:
+      - task: test-go-generate-taskfile
+  test-go:
     cmds:
       - task: test-go-generate-taskfile
   test-go-generate-taskfile:
