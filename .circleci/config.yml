@@ -86,23 +86,38 @@ workflows:
     jobs:
       - checkout:
           requires: []
+          filters:
+            tags:
+              only: /.*/
       - fetch-task:
           requires:
             - checkout
+          filters:
+            tags:
+              only: /.*/
       - lint-go:
           requires:
             - checkout
             - fetch-task
+          filters:
+            tags:
+              only: /.*/
       - test-go:
           requires:
             - checkout
             - fetch-task
+          filters:
+            tags:
+              only: /.*/
       - imgrefs:
           requires:
             - checkout
             - fetch-task
             - lint-go
             - test-go
+          filters:
+            tags:
+              only: /.*/
       - imgbuild:
           requires:
             - checkout
@@ -110,6 +125,9 @@ workflows:
             - imgrefs
             - lint-go
             - test-go
+          filters:
+            tags:
+              only: /.*/
       - imgpush:
           requires:
             - checkout
@@ -118,6 +136,9 @@ workflows:
             - imgrefs
             - lint-go
             - test-go
+          filters:
+            tags:
+              only: /.*/
       - ci-all:
           requires:
             - checkout
@@ -127,3 +148,6 @@ workflows:
             - imgrefs
             - lint-go
             - test-go
+          filters:
+            tags:
+              only: /.*/

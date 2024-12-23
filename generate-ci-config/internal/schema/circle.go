@@ -56,13 +56,16 @@ type CirlceWorkflowConfig struct {
 }
 
 type CirlceWorkflowJobConfig struct {
-	Dependencies []string `yaml:"requires"`
-	// TODO; filter
-	/*
-		filters:
-			tags:
-				only: / . * /
-	*/
+	Dependencies []string                   `yaml:"requires"`
+	Filter       CircleWorkflowFilterConfig `yaml:"filters,omitempty"`
+}
+
+type CircleWorkflowFilterConfig struct {
+	Tags CirlceWorkflowFilterTagsConfig `yaml:"tags"`
+}
+
+type CirlceWorkflowFilterTagsConfig struct {
+	Only string `yaml:"only"`
 }
 
 func GenerateCircleConfig(steps []*GenericCiStep) CircleConfig {
@@ -132,6 +135,11 @@ func GenerateCircleConfig(steps []*GenericCiStep) CircleConfig {
 		// workflow
 		workflowJob := CirlceWorkflowJobConfig{
 			Dependencies: step.ResolvedDependencies,
+			Filter: CircleWorkflowFilterConfig{
+				Tags: CirlceWorkflowFilterTagsConfig{
+					Only: "/.*/",
+				},
+			},
 		}
 
 		workflowJobWrapper := make(map[string]CirlceWorkflowJobConfig, 0)
