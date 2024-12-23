@@ -4,13 +4,19 @@ includes:
     taskfile: taskfile.local.yml
     optional: true
 tasks:
+  img:
+    cmds:
+      - task: img-refs-generate-taskfile
+      - task: img-build-generate-taskfile
+      - task: img-push-generate-taskfile
   img-build:
     cmds:
       - task: img-build-generate-taskfile
   img-build-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     deps:
-      - img-tags-generate-taskfile
+      - img-refs-generate-taskfile
+    internal: true
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -32,8 +38,8 @@ tasks:
           # Second (cached) build to get the image ID
           img=$($builder build -q -f Containerfile .)
 
-          if [[ -f .image-tags ]]; then
-            cat .image-tags | while read tag; do
+          if [[ -f .imgrefs ]]; then
+            cat .imgrefs | while read tag; do
               $builder tag "$img" "${tag}"
               echo "Tagged ${tag}"
             done
@@ -43,6 +49,7 @@ tasks:
       - task: img-push-generate-taskfile
   img-push-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
+    internal: true
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -58,22 +65,23 @@ tasks:
             exit 1
           fi
 
-          if [[ -f .image-tags ]]; then
-            cat .image-tags | (grep -v "^localhost" || :) | while read tag; do
+          if [[ -f .imgrefs ]]; then
+            cat .imgrefs | (grep -v "^localhost" || :) | while read tag; do
               $builder push "${tag}"
               echo "Pushed ${tag}"
             done
           fi
-  img-tags:
+  img-refs:
     cmds:
-      - task: img-tags-generate-taskfile
-  img-tags-generate-taskfile:
+      - task: img-refs-generate-taskfile
+  img-refs-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
+    internal: true
     cmds:
       - cmd: |-
           set -euo pipefail
 
-          if [[ -f .image-tags ]] && [[ ${CI+y} == "y" ]]; then
+          if [[ -f .imgrefs ]] && [[ ${CI+y} == "y" ]]; then
             echo "Skipping re-computing tags"
             exit 0
           fi
@@ -88,8 +96,8 @@ tasks:
             exit 1
           fi
 
-          if ! grep ".image-tags" .gitignore >/dev/null 2>&1; then
-            echo ".gitignore must include .image-tags to use the image builder tasks" >&2
+          if ! grep ".imgrefs" .gitignore >/dev/null 2>&1; then
+            echo ".gitignore must include .imgrefs to use the image builder tasks" >&2
             exit 1
           fi
 
@@ -102,21 +110,21 @@ tasks:
           latest_version_overall=$(git tag -l | sort -r -V | head -n 1)
           latest_version_within_major=$(git tag -l | grep "^${major_version}" | sort -r -V | head -n 1)
 
-          echo -n "" > .image-tags
+          echo -n "" > .imgrefs
 
           if [[ ! -z "$img_name" ]]; then
-            echo "localhost/${img_name}" >> .image-tags
-            echo "localhost/${img_name}:${version}" >> .image-tags
+            echo "localhost/${img_name}" >> .imgrefs
+            echo "localhost/${img_name}:${version}" >> .imgrefs
 
             if [[ ! -z "$img_registry" ]] && [[ ${CI+y} == "y" ]]; then
-              echo "${img_registry}/${img_name}:${version}" >> .image-tags
+              echo "${img_registry}/${img_name}:${version}" >> .imgrefs
 
               if [[ "${is_exact_tag}" == "y" ]] && [[ "${version}" == "${latest_version_within_major}" ]]; then
-                echo "${img_registry}/${img_name}:${major_version}" >> .image-tags
+                echo "${img_registry}/${img_name}:${major_version}" >> .imgrefs
               fi
 
               if [[ "${is_exact_tag}" == "y" ]] && [[ "${version}" == "${latest_version_overall}" ]]; then
-                echo "${img_registry}/${img_name}:latest" >> .image-tags
+                echo "${img_registry}/${img_name}:latest" >> .imgrefs
               fi
             fi
           else
@@ -124,19 +132,16 @@ tasks:
           fi
 
           echo "Image tags:"
-          cat .image-tags
+          cat .imgrefs
   lint:
     cmds:
       - task: lint-go-generate-taskfile
-  lint-fix:
+  lint-go:
     cmds:
-      - task: lint-fix-go-generate-taskfile
-  lint-fix-go-generate-taskfile:
-    dir: '{{.ROOT_DIR}}/generate-taskfile'
-    cmds:
-      - cmd: gofmt -s -w .
+      - task: lint-go-generate-taskfile
   lint-go-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
+    internal: true
     cmds:
       - cmd: |-
           lint_diff=$(gofmt -e -s -d .)
@@ -145,10 +150,25 @@ tasks:
             echo "$lint_diff"
             exit 1
           fi
+  lintfix:
+    cmds:
+      - task: lintfix-go-generate-taskfile
+  lintfix-go:
+    cmds:
+      - task: lintfix-go-generate-taskfile
+  lintfix-go-generate-taskfile:
+    dir: '{{.ROOT_DIR}}/generate-taskfile'
+    internal: true
+    cmds:
+      - cmd: gofmt -s -w .
   test:
+    cmds:
+      - task: test-go-generate-taskfile
+  test-go:
     cmds:
       - task: test-go-generate-taskfile
   test-go-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
+    internal: true
     cmds:
       - cmd: go test ./...

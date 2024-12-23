@@ -5,12 +5,29 @@ import (
 	"path"
 )
 
-type ContainerImageProject struct {
+type ImgProject struct {
 	ContainerFileName   string
 	ProjectRelativePath string
 }
 
-func (p *ContainerImageProject) jobSetup() string {
+func (p *ImgProject) AddTasks(taskFile *TaskFile) error {
+	adders := []TaskAdder{
+		p.addRefsTask,
+		p.addBuildTask,
+		p.addPushTask,
+	}
+
+	for _, f := range adders {
+		err := f(taskFile)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (p *ImgProject) builderSetup() string {
 	return `
 if command -v podman >/dev/null 2>&1; then
   # Podman for building locally or in Tatsu CI
@@ -25,15 +42,16 @@ fi
 `
 }
 
-func (p *ContainerImageProject) AddImageTagsTask(taskFile *TaskFile, parentTask *Task) error {
-	name := fmt.Sprintf("img-tags-%s", pathToSafeName(p.ProjectRelativePath))
-	task := &Task{
+func (p *ImgProject) addRefsTask(taskFile *TaskFile) error {
+	name := fmt.Sprintf("img-refs-%s", pathToSafeName(p.ProjectRelativePath))
+	taskFile.Tasks[name] = &Task{
+		Internal:  true,
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []Command{
 			{Command: `
 set -euo pipefail
 
-if [[ -f .image-tags ]] && [[ ${CI+y} == "y" ]]; then
+if [[ -f .imgrefs ]] && [[ ${CI+y} == "y" ]]; then
   echo "Skipping re-computing tags"
   exit 0
 fi
@@ -48,8 +66,8 @@ if ! git describe --tags >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! grep ".image-tags" .gitignore >/dev/null 2>&1; then
-  echo ".gitignore must include .image-tags to use the image builder tasks" >&2
+if ! grep ".imgrefs" .gitignore >/dev/null 2>&1; then
+  echo ".gitignore must include .imgrefs to use the image builder tasks" >&2
   exit 1
 fi
 
@@ -62,21 +80,21 @@ major_version=$(echo "${version}" | cut -d '.' -f 1)
 latest_version_overall=$(git tag -l | sort -r -V | head -n 1)
 latest_version_within_major=$(git tag -l | grep "^${major_version}" | sort -r -V | head -n 1)
 
-echo -n "" > .image-tags
+echo -n "" > .imgrefs
 
 if [[ ! -z "$img_name" ]]; then
-  echo "localhost/${img_name}" >> .image-tags
-  echo "localhost/${img_name}:${version}" >> .image-tags
+  echo "localhost/${img_name}" >> .imgrefs
+  echo "localhost/${img_name}:${version}" >> .imgrefs
 
   if [[ ! -z "$img_registry" ]] && [[ ${CI+y} == "y" ]]; then
-    echo "${img_registry}/${img_name}:${version}" >> .image-tags
+    echo "${img_registry}/${img_name}:${version}" >> .imgrefs
 
     if [[ "${is_exact_tag}" == "y" ]] && [[ "${version}" == "${latest_version_within_major}" ]]; then
-      echo "${img_registry}/${img_name}:${major_version}" >> .image-tags
+      echo "${img_registry}/${img_name}:${major_version}" >> .imgrefs
     fi
 
     if [[ "${is_exact_tag}" == "y" ]] && [[ "${version}" == "${latest_version_overall}" ]]; then
-      echo "${img_registry}/${img_name}:latest" >> .image-tags
+      echo "${img_registry}/${img_name}:latest" >> .imgrefs
     fi
   fi
 else
@@ -84,32 +102,27 @@ else
 fi
 
 echo "Image tags:"
-cat .image-tags
+cat .imgrefs
 `},
 		},
-	}
-
-	taskFile.Tasks[name] = task
-
-	if parentTask != nil {
-		parentTask.Commands = append(parentTask.Commands, Command{Task: name})
 	}
 
 	return nil
 }
 
-func (p *ContainerImageProject) AddImageBuildTask(taskFile *TaskFile, parentTask *Task) error {
+func (p *ImgProject) addBuildTask(taskFile *TaskFile) error {
 	name := fmt.Sprintf("img-build-%s", pathToSafeName(p.ProjectRelativePath))
-	task := &Task{
+	taskFile.Tasks[name] = &Task{
+		Internal:  true,
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Dependencies: []string{
-			fmt.Sprintf("img-tags-%s", pathToSafeName(p.ProjectRelativePath)),
+			fmt.Sprintf("img-refs-%s", pathToSafeName(p.ProjectRelativePath)),
 		},
 		Commands: []Command{
 			{Command: `
 set -euo pipefail
 
-` + p.jobSetup() + `
+` + p.builderSetup() + `
 
 # First build to get visible logs
 $builder build -f ` + p.ContainerFileName + ` .
@@ -117,8 +130,8 @@ $builder build -f ` + p.ContainerFileName + ` .
 # Second (cached) build to get the image ID
 img=$($builder build -q -f ` + p.ContainerFileName + ` .)
 
-if [[ -f .image-tags ]]; then
-  cat .image-tags | while read tag; do
+if [[ -f .imgrefs ]]; then
+  cat .imgrefs | while read tag; do
     $builder tag "$img" "${tag}"
     echo "Tagged ${tag}"
   done
@@ -127,39 +140,28 @@ fi
 		},
 	}
 
-	taskFile.Tasks[name] = task
-
-	if parentTask != nil {
-		parentTask.Commands = append(parentTask.Commands, Command{Task: name})
-	}
-
 	return nil
 }
 
-func (p *ContainerImageProject) AddImagePushTask(taskFile *TaskFile, parentTask *Task) error {
+func (p *ImgProject) addPushTask(taskFile *TaskFile) error {
 	name := fmt.Sprintf("img-push-%s", pathToSafeName(p.ProjectRelativePath))
-	task := &Task{
+	taskFile.Tasks[name] = &Task{
+		Internal:  true,
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []Command{
 			{Command: `
 set -euo pipefail
 
-` + p.jobSetup() + `
+` + p.builderSetup() + `
 
-if [[ -f .image-tags ]]; then
-  cat .image-tags | (grep -v "^localhost" || :) | while read tag; do
+if [[ -f .imgrefs ]]; then
+  cat .imgrefs | (grep -v "^localhost" || :) | while read tag; do
     $builder push "${tag}"
     echo "Pushed ${tag}"
   done
 fi
 `},
 		},
-	}
-
-	taskFile.Tasks[name] = task
-
-	if parentTask != nil {
-		parentTask.Commands = append(parentTask.Commands, Command{Task: name})
 	}
 
 	return nil

@@ -3,10 +3,13 @@ package main
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"log/slog"
+	"maps"
 	"os"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -34,14 +37,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	// determine languages/sub-projects in the projects
 	countSubProjects, subProjects := findSubProjects(projectPath)
 	if countSubProjects == 0 {
 		l.Error("No compatible sub-projects found in the project path")
 		os.Exit(1)
 	}
 
-	// init output and parent tasks
 	output := TaskFile{
 		Version: "3",
 		Includes: map[string]*IncludeTarget{
@@ -53,110 +54,54 @@ func main() {
 		Tasks: map[string]*Task{},
 	}
 
-	lintParentTask := Task{
-		Commands: []Command{},
-	}
-
-	lintFixParentTask := Task{
-		Commands: []Command{},
-	}
-
-	testParentTask := Task{
-		Commands: []Command{},
-	}
-
-	generateParentTask := Task{
-		Commands: []Command{},
-	}
-
-	containerImageTagsParentTask := Task{
-		Commands: []Command{},
-	}
-
-	containerImageBuildParentTask := Task{
-		Commands: []Command{},
-	}
-
-	containerImagePushParentTask := Task{
-		Commands: []Command{},
-	}
-
-	output.Tasks["lint"] = &lintParentTask
-	output.Tasks["lint-fix"] = &lintFixParentTask
-	output.Tasks["test"] = &testParentTask
-	output.Tasks["gen"] = &generateParentTask
-	output.Tasks["img-tags"] = &containerImageTagsParentTask
-	output.Tasks["img-build"] = &containerImageBuildParentTask
-	output.Tasks["img-push"] = &containerImagePushParentTask
-
-	// TODO: package init tasks
-
-	// lint tasks
-
-	for _, p := range subProjects.GoProjects {
-		err = p.AddLintTask(&output, &lintParentTask)
-		if err != nil {
-			l.Error("Error generating Go lint task", "error", err)
-			os.Exit(1)
-		}
-
-		err = p.AddLintFixTask(&output, &lintFixParentTask)
-		if err != nil {
-			l.Error("Error generating Go lint-fix task", "error", err)
-			os.Exit(1)
-		}
-	}
+	// layer 3 tasks
 
 	for _, p := range subProjects.BufProjects {
-		err = p.AddLintTask(&output, &lintParentTask)
+		err = p.AddTasks(&output)
 		if err != nil {
-			l.Error("Error generating Buf lint task", "error", err)
+			l.Error("Error generating Buf tasks", "error", err)
 			os.Exit(1)
 		}
 	}
-
-	// test tasks
 
 	for _, p := range subProjects.GoProjects {
-		err = p.AddTestTask(&output, &testParentTask)
+		err = p.AddTasks(&output)
 		if err != nil {
-			l.Error("Error generating Go test task", "error", err)
+			l.Error("Error generating Go tasks", "error", err)
 			os.Exit(1)
 		}
 	}
-
-	// generate tasks
-
-	for _, p := range subProjects.BufProjects {
-		err = p.AddGenerateTask(&output, &generateParentTask)
-		if err != nil {
-			l.Error("Error generating Buf generate task", "error", err)
-			os.Exit(1)
-		}
-	}
-
-	// TODO: project build tasks
-
-	// container image tasks
 
 	for _, p := range subProjects.ContainerImageProjects {
-		err = p.AddImageTagsTask(&output, &containerImageTagsParentTask)
+		err = p.AddTasks(&output)
 		if err != nil {
-			l.Error("Error generating image tags task", "error", err)
+			l.Error("Error generating img tasks", "error", err)
+			os.Exit(1)
+		}
+	}
+
+	// layer 1 and 2 tasks
+	layer3Names := slices.Collect(maps.Keys(output.Tasks))
+	for _, name := range layer3Names {
+		nameChunks := strings.Split(name, "-")
+		if len(nameChunks) < 3 {
+			l.Error("Found invalid task name", "name", name)
 			os.Exit(1)
 		}
 
-		err = p.AddImageBuildTask(&output, &containerImageBuildParentTask)
-		if err != nil {
-			l.Error("Error generating image build task", "error", err)
-			os.Exit(1)
+		layer1Name := nameChunks[0]
+		layer2Name := fmt.Sprintf("%s-%s", nameChunks[0], nameChunks[1])
+
+		if _, ok := output.Tasks[layer1Name]; !ok {
+			output.Tasks[layer1Name] = &Task{}
 		}
 
-		err = p.AddImagePushTask(&output, &containerImagePushParentTask)
-		if err != nil {
-			l.Error("Error generating image push task", "error", err)
-			os.Exit(1)
+		if _, ok := output.Tasks[layer2Name]; !ok {
+			output.Tasks[layer2Name] = &Task{}
 		}
+
+		output.Tasks[layer1Name].Commands = append(output.Tasks[layer1Name].Commands, Command{Task: name})
+		output.Tasks[layer2Name].Commands = append(output.Tasks[layer2Name].Commands, Command{Task: name})
 	}
 
 	// clean up output
@@ -201,7 +146,7 @@ func main() {
 func findSubProjects(projectPath string) (int, *SubProjectData) {
 	countProjectsFound := 0
 	subProjects := SubProjectData{
-		ContainerImageProjects: make([]*ContainerImageProject, 0),
+		ContainerImageProjects: make([]*ImgProject, 0),
 		GoProjects:             make([]*GoProject, 0),
 	}
 
@@ -225,7 +170,7 @@ func findSubProjects(projectPath string) (int, *SubProjectData) {
 
 	for i := range containerImagePaths {
 		countProjectsFound++
-		subProjects.ContainerImageProjects = append(subProjects.ContainerImageProjects, &ContainerImageProject{
+		subProjects.ContainerImageProjects = append(subProjects.ContainerImageProjects, &ImgProject{
 			ContainerFileName:   path.Base(containerImagePaths[i]),
 			ProjectRelativePath: path.Dir(containerImagePaths[i]),
 		})

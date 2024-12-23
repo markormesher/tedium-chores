@@ -1,22 +1,32 @@
 # Chore: Generate Taskfile
 
-This [Tedium](https://github.com/markormesher/tedium) chore generates a [Taskfile](https://taskfile.dev) for each project in a repo.
+This [Tedium](https://github.com/markormesher/tedium) chore generates a [Taskfile](https://taskfile.dev) with a hierarchy of tasks suitable for both local dev and remote CI in multi-language projects.
 
-The supported/planned tasks are:
+The nested task structure is generally **per-type -> per-language -> per-project**, with each layer functioning as follows:
 
+- Per-type tasks, e.g. `lint` or `test`, include all tasks of their type. These tasks contain no real logic, they only include sub-tasks. These are intended to be run in local development environments, where all the languages and dependencies for a project are expected to be installed.
+- Per-language tasks, e.g. `lint-go` or `test-js`, include all tasks of their type for a given language. These tasks also contain no real logic. These are intended to be run in CI environments, making it easy to run separate steps for each language.
+- Per-project tasks, e.g. `lint-go-root` or `test-js-frontend`, contain the actual logic to run a given type of task, for a given language, within a specific project.
+
+## Supported Languages / Tools
+
+- [Buf](https://buf.build)
 - Go
-  - :hourglass: Install dependencies
-  - :white_check_mark: Run linter
-  - :white_check_mark: Apply lint fixes
-  - :white_check_mark: Run tests
-  - :hourglass: Build
-- TypeScript
-  - :hourglass: Install dependencies
-  - :hourglass: Run linter
-  - :hourglass: Apply lint fixes
-  - :hourglass: Run tests
-  - :hourglass: Build
 - Container images (via `Containerfile` or `Dockerfile`)
-  - :white_check_mark: Build and tag image
-    - Note: depends on `image.name` and optional `image.regsitry` labels
-  - :white_check_mark: Push image
+
+## Supported Tasks
+
+- `gen` _(code generation)_
+  - `gen-buf-*`
+- `lint`
+  - `lint-buf-*`
+  - `lint-go-*`
+- `lintfix`
+  - `lintfix-go-*`
+- `test`
+  - `test-go-*`
+- `img` _(container image publishing)_
+  - `img-build-*`
+  - `img-push-*`
+
+Note that `img` tasks use the second layer for different stages rather than different languages as they require different tools (`refs` requires Git, `build` and `push` require Podman or Docker).

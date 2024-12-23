@@ -9,9 +9,27 @@ type GoProject struct {
 	ProjectRelativePath string
 }
 
-func (p *GoProject) AddLintTask(taskFile *TaskFile, parentTask *Task) error {
+func (p *GoProject) AddTasks(taskFile *TaskFile) error {
+	adders := []TaskAdder{
+		p.addLintTask,
+		p.addLintFixTask,
+		p.addTestTask,
+	}
+
+	for _, f := range adders {
+		err := f(taskFile)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (p *GoProject) addLintTask(taskFile *TaskFile) error {
 	name := fmt.Sprintf("lint-go-%s", pathToSafeName(p.ProjectRelativePath))
-	task := &Task{
+	taskFile.Tasks[name] = &Task{
+		Internal:  true,
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []Command{
 			{Command: `lint_diff=$(gofmt -e -s -d .)
@@ -23,46 +41,30 @@ fi`},
 		},
 	}
 
-	taskFile.Tasks[name] = task
-
-	if parentTask != nil {
-		parentTask.Commands = append(parentTask.Commands, Command{Task: name})
-	}
-
 	return nil
 }
 
-func (p *GoProject) AddLintFixTask(taskFile *TaskFile, parentTask *Task) error {
-	name := fmt.Sprintf("lint-fix-go-%s", pathToSafeName(p.ProjectRelativePath))
-	task := &Task{
+func (p *GoProject) addLintFixTask(taskFile *TaskFile) error {
+	name := fmt.Sprintf("lintfix-go-%s", pathToSafeName(p.ProjectRelativePath))
+	taskFile.Tasks[name] = &Task{
+		Internal:  true,
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []Command{
 			{Command: `gofmt -s -w .`},
 		},
 	}
 
-	taskFile.Tasks[name] = task
-
-	if parentTask != nil {
-		parentTask.Commands = append(parentTask.Commands, Command{Task: name})
-	}
-
 	return nil
 }
 
-func (p *GoProject) AddTestTask(taskFile *TaskFile, parentTask *Task) error {
+func (p *GoProject) addTestTask(taskFile *TaskFile) error {
 	name := fmt.Sprintf("test-go-%s", pathToSafeName(p.ProjectRelativePath))
-	task := &Task{
+	taskFile.Tasks[name] = &Task{
+		Internal:  true,
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []Command{
 			{Command: `go test ./...`},
 		},
-	}
-
-	taskFile.Tasks[name] = task
-
-	if parentTask != nil {
-		parentTask.Commands = append(parentTask.Commands, Command{Task: name})
 	}
 
 	return nil

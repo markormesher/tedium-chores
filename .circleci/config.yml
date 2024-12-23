@@ -1,13 +1,9 @@
 version: 2.1
 
-defaults: &defaults
-  working_directory: /tmp/app
-  docker:
-    - image: cimg/go:1.23.4
-
 jobs:
   checkout:
-    <<: *defaults
+    docker:
+      - image: cimg/base:2024.12
     steps:
       - checkout
       - persist_to_workspace:
@@ -16,7 +12,6 @@ jobs:
             - .
 
   fetch-task:
-    <<: *defaults
     docker:
       - image: ghcr.io/markormesher/task-fetcher:v0.4.1
     steps:
@@ -29,16 +24,18 @@ jobs:
             - .
 
   lint:
-    <<: *defaults
+    docker:
+      - image: docker.io/golang:1.23.4
     steps:
       - attach_workspace:
           at: .
       - run:
-          name: Lint
-          command: ./task lint
+          name: Lint Go
+          command: ./task lint-go
 
   img:
-    <<: *defaults
+    docker:
+      - image: cimg/base:2024.12
     steps:
       - attach_workspace:
           at: .
@@ -68,7 +65,7 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - lint:
+      - lint-go:
           requires:
             - checkout
             - fetch-task
@@ -79,7 +76,7 @@ workflows:
           requires:
             - checkout
             - fetch-task
-            - lint
+            - lint-go
           filters:
             tags:
               only: /.*/
