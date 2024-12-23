@@ -37,4 +37,4 @@ The nested task structure is generally **per-type -> per-language -> per-project
 - `imgpush`
   - _per-project tasks_
 
-Note that `img*` projects do not have a middle per-project level.
+Note that `img*` projects do not have a middle per-language level.
