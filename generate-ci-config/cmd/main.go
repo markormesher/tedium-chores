@@ -133,7 +133,7 @@ func main() {
 			*regexp.MustCompile(`fetch\-task`),
 			*regexp.MustCompile(`lint\-.*`),
 			*regexp.MustCompile(`test\-.*`),
-			*regexp.MustCompile(`imgrefs|imgbuild|imgpush`),
+			*regexp.MustCompile(`img.*`),
 		},
 		SkipPersist: true,
 	})
@@ -170,6 +170,7 @@ func main() {
 
 	// img steps
 	if slices.Contains(taskNames, "imgrefs") {
+		// refs
 		commands := make([]string, 0)
 		if ciType == "drone" {
 			commands = append(commands, `git fetch --tags`)
@@ -187,40 +188,13 @@ func main() {
 				*regexp.MustCompile(`test\-.*`),
 			},
 		})
-	}
 
-	if slices.Contains(taskNames, "imgbuild") {
+		// build + push
 		step := schema.GenericCiStep{
-			Name:  "imgbuild",
+			Name:  "imgbuild-imgpush",
 			Image: imgStepImage,
 			Commands: []string{
 				`./task imgbuild`,
-			},
-			Dependencies: []regexp.Regexp{
-				*regexp.MustCompile(`checkout`),
-				*regexp.MustCompile(`fetch\-task`),
-				*regexp.MustCompile(`lint\-.*`),
-				*regexp.MustCompile(`test\-.*`),
-				*regexp.MustCompile(`imgrefs`),
-			},
-			SkipPersist: true,
-			NeedsDocker: true,
-		}
-
-		if ciType == "drone" {
-			step.Environment = map[string]string{
-				"CONTAINER_HOST": "tcp://podman.podman.svc.cluster.local:8000",
-			}
-		}
-
-		steps = append(steps, &step)
-	}
-
-	if slices.Contains(taskNames, "imgpush") {
-		step := schema.GenericCiStep{
-			Name:  "imgpush",
-			Image: imgStepImage,
-			Commands: []string{
 				`./task imgpush`,
 			},
 			Dependencies: []regexp.Regexp{
@@ -229,7 +203,6 @@ func main() {
 				*regexp.MustCompile(`lint\-.*`),
 				*regexp.MustCompile(`test\-.*`),
 				*regexp.MustCompile(`imgrefs`),
-				*regexp.MustCompile(`imgbuild`),
 			},
 			SkipPersist: true,
 			NeedsDocker: true,

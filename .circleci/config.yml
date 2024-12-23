@@ -30,7 +30,7 @@ jobs:
           root: .
           paths:
             - .
-  imgbuild:
+  imgbuild-imgpush:
     docker:
       - image: cimg/base:2024.12
     steps:
@@ -39,17 +39,9 @@ jobs:
       - setup_remote_docker:
           docker_layer_caching: true
       - run:
-          command: ./task imgbuild
-  imgpush:
-    docker:
-      - image: cimg/base:2024.12
-    steps:
-      - attach_workspace:
-          at: .
-      - setup_remote_docker:
-          docker_layer_caching: true
-      - run:
-          command: ./task imgpush
+          command: |-
+            ./task imgbuild
+            ./task imgpush
   imgrefs:
     docker:
       - image: docker.io/alpine/git:v2.47.1
@@ -116,21 +108,10 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - imgbuild:
+      - imgbuild-imgpush:
           requires:
             - checkout
             - fetch-task
-            - imgrefs
-            - lint-go
-            - test-go
-          filters:
-            tags:
-              only: /.*/
-      - imgpush:
-          requires:
-            - checkout
-            - fetch-task
-            - imgbuild
             - imgrefs
             - lint-go
             - test-go
@@ -141,8 +122,7 @@ workflows:
           requires:
             - checkout
             - fetch-task
-            - imgbuild
-            - imgpush
+            - imgbuild-imgpush
             - imgrefs
             - lint-go
             - test-go
