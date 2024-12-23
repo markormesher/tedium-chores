@@ -18,8 +18,11 @@ type IncludeTarget struct {
 }
 
 type Task struct {
-	Directory string    `yaml:"dir,omitempty"`
-	Commands  []Command `yaml:"cmds"`
+	Directory    string    `yaml:"dir,omitempty"`
+	Dependencies []string  `yaml:"deps,omitempty"`
+	Sources      []string  `yaml:"sources,omitempty"`
+	Generates    []string  `yaml:"generates,omitempty"`
+	Commands     []Command `yaml:"cmds"`
 }
 
 type Command struct {

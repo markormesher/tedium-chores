@@ -45,14 +45,16 @@ jobs:
       - setup_remote_docker:
           docker_layer_caching: true
       - run:
+          name: Generate container image tags
+          command: ./task img-tags
+      - run:
           name: Build container image
           command: ./task img-build
       - run:
-          name: Maybe push container image
-          command: |
-            if ! git describe --exact-match HEAD >/dev/null 2>&1; then echo "Not on tagged commit - nothing to do"; exit 0; fi
-            echo "${GHCR_PUBLISH_TOKEN}" | docker login ghcr.io -u markormesher --password-stdin
-            ./task img-push
+          name: Push container image
+          command:
+            - echo "${GHCR_PUBLISH_TOKEN}" | docker login ghcr.io -u markormesher --password-stdin
+            - ./task img-push
 
 workflows:
   version: 2

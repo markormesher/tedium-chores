@@ -69,6 +69,10 @@ func main() {
 		Commands: []Command{},
 	}
 
+	containerImageTagsParentTask := Task{
+		Commands: []Command{},
+	}
+
 	containerImageBuildParentTask := Task{
 		Commands: []Command{},
 	}
@@ -81,6 +85,7 @@ func main() {
 	output.Tasks["lint-fix"] = &lintFixParentTask
 	output.Tasks["test"] = &testParentTask
 	output.Tasks["gen"] = &generateParentTask
+	output.Tasks["img-tags"] = &containerImageTagsParentTask
 	output.Tasks["img-build"] = &containerImageBuildParentTask
 	output.Tasks["img-push"] = &containerImagePushParentTask
 
@@ -135,6 +140,12 @@ func main() {
 	// container image tasks
 
 	for _, p := range subProjects.ContainerImageProjects {
+		err = p.AddImageTagsTask(&output, &containerImageTagsParentTask)
+		if err != nil {
+			l.Error("Error generating image tags task", "error", err)
+			os.Exit(1)
+		}
+
 		err = p.AddImageBuildTask(&output, &containerImageBuildParentTask)
 		if err != nil {
 			l.Error("Error generating image build task", "error", err)
