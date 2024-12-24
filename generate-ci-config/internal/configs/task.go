@@ -18,15 +18,17 @@ type Task struct {
 	Internal bool `yaml:"internal,omitempty"`
 }
 
-func LoadTaskFile(path string) (Taskfile, error) {
+func LoadTaskFile(path string) (*Taskfile, error) {
 	_, err := os.Stat(path)
-	if err != nil {
-		return Taskfile{}, fmt.Errorf("error checking Taskfile path: %w", err)
+	if os.IsNotExist(err) {
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("error checking Taskfile path: %w", err)
 	}
 
 	taskfileContents, err := os.ReadFile(path)
 	if err != nil {
-		return Taskfile{}, fmt.Errorf("error reading Taskfile: %w", err)
+		return nil, fmt.Errorf("error reading Taskfile: %w", err)
 	}
 
 	var taskfile Taskfile
@@ -34,8 +36,8 @@ func LoadTaskFile(path string) (Taskfile, error) {
 	decoder.KnownFields(false)
 	err = decoder.Decode(&taskfile)
 	if err != nil {
-		return Taskfile{}, fmt.Errorf("error parsing Taskfile: %w", err)
+		return nil, fmt.Errorf("error parsing Taskfile: %w", err)
 	}
 
-	return taskfile, nil
+	return &taskfile, nil
 }

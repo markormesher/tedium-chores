@@ -85,6 +85,10 @@ func main() {
 		l.Error("error loading Taskfile", "error", err)
 		os.Exit(1)
 	}
+	if taskfile == nil {
+		l.Warn("no taskfile in this repo - skipping")
+		os.Exit(0)
+	}
 
 	taskNames := make([]string, 0)
 	for name, task := range taskfile.Tasks {
