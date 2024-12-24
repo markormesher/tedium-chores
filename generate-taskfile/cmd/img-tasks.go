@@ -161,7 +161,7 @@ if [[ -f .imgrefs ]]; then
   done
 else
   echo "No .imgrefs file - nothing will be pushed"
-	exit 1
+  exit 1
 fi
 `},
 		},

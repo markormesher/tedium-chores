@@ -295,7 +295,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	outputFile, err := os.OpenFile(outputPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	outputFile, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		l.Error("Error writing to CI config", "error", err)
 		os.Exit(1)
