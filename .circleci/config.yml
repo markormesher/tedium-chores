@@ -1,39 +1,38 @@
-version: 2.1
+# This file is maintained by Tedium - manual edits will be overwritten!
 
+version: "2.1"
 jobs:
   checkout:
     docker:
       - image: cimg/base:2024.12
     steps:
-      - checkout
+      - checkout:
+          path: .
       - persist_to_workspace:
           root: .
           paths:
             - .
-
+  ci-all:
+    docker:
+      - image: cimg/base:2024.12
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          command: echo "Done"
   fetch-task:
     docker:
       - image: ghcr.io/markormesher/task-fetcher:v0.4.1
     steps:
+      - attach_workspace:
+          at: .
       - run:
-          name: Fetch task binary
           command: cp /task .
       - persist_to_workspace:
           root: .
           paths:
             - .
-
-  lint-go:
-    docker:
-      - image: docker.io/golang:1.23.4
-    steps:
-      - attach_workspace:
-          at: .
-      - run:
-          name: Lint Go
-          command: ./task lint-go
-
-  img:
+  imgbuild-imgpush:
     docker:
       - image: cimg/base:2024.12
     steps:
@@ -42,29 +41,42 @@ jobs:
       - setup_remote_docker:
           docker_layer_caching: true
       - run:
-          name: Build and push container image
-          command: |
+          command: |-
             echo "${GHCR_PUBLISH_TOKEN}" | docker login ghcr.io -u markormesher --password-stdin
-            ./task imgrefs
             ./task imgbuild
             ./task imgpush
-
-  ci-all:
+  imgrefs:
     docker:
-      - image: cimg/base:2024.12
+      - image: docker.io/alpine/git:v2.47.1
     steps:
+      - attach_workspace:
+          at: .
       - run:
-          command: echo "Done"
-
+          command: ./task imgrefs
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+  lint-go:
+    docker:
+      - image: docker.io/golang:1.23.4
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          command: ./task lint-go
 workflows:
   version: 2
   main:
     jobs:
       - checkout:
+          requires: []
           filters:
             tags:
               only: /.*/
       - fetch-task:
+          requires:
+            - checkout
           filters:
             tags:
               only: /.*/
@@ -75,10 +87,19 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - img:
+      - imgrefs:
           requires:
             - checkout
             - fetch-task
+            - lint-go
+          filters:
+            tags:
+              only: /.*/
+      - imgbuild-imgpush:
+          requires:
+            - checkout
+            - fetch-task
+            - imgrefs
             - lint-go
           filters:
             tags:
@@ -87,8 +108,9 @@ workflows:
           requires:
             - checkout
             - fetch-task
+            - imgbuild-imgpush
+            - imgrefs
             - lint-go
-            - img
           filters:
             tags:
               only: /.*/
