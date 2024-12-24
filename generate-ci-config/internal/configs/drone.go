@@ -1,4 +1,12 @@
-package schema
+package configs
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+
+	"gopkg.in/yaml.v3"
+)
 
 type DroneConfig struct {
 	Kind     string              `yaml:"kind"`
@@ -61,4 +69,28 @@ func GenerateDroneConfig(steps []*GenericCiStep) DroneConfig {
 	}
 
 	return config
+}
+
+func LoadDroneConfigIfPresent(path string) (*DroneConfig, error) {
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("error checking Drone config path: %w", err)
+	}
+
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("error reading Drone config: %w", err)
+	}
+
+	var config DroneConfig
+	decoder := yaml.NewDecoder(bytes.NewReader(contents))
+	decoder.KnownFields(false)
+	err = decoder.Decode(&config)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing Drone config: %w", err)
+	}
+
+	return &config, nil
 }

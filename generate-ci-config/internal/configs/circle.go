@@ -1,6 +1,13 @@
-package schema
+package configs
 
-import "strings"
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"strings"
+
+	"gopkg.in/yaml.v3"
+)
 
 type CircleConfig struct {
 	Version   string                     `yaml:"version"`
@@ -148,4 +155,28 @@ func GenerateCircleConfig(steps []*GenericCiStep) CircleConfig {
 	}
 
 	return config
+}
+
+func LoadCircleConfigIfPresent(path string) (*CircleConfig, error) {
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("error checking Circle config path: %w", err)
+	}
+
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("error reading Circle config: %w", err)
+	}
+
+	var config CircleConfig
+	decoder := yaml.NewDecoder(bytes.NewReader(contents))
+	decoder.KnownFields(false)
+	err = decoder.Decode(&config)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing Circle config: %w", err)
+	}
+
+	return &config, nil
 }

@@ -12,13 +12,23 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/markormesher/tedium-chores/generate-ci-file/internal/schema"
+	"github.com/markormesher/tedium-chores/generate-ci-file/internal/configs"
 	"github.com/markormesher/tedium-chores/generate-ci-file/internal/util"
 	"gopkg.in/yaml.v3"
 )
 
 var jsonHandler = slog.NewJSONHandler(os.Stdout, nil)
 var l = slog.New(jsonHandler)
+
+// ImageSet is a utility type to store the container image references used for various steps.
+type ImageSet struct {
+	fetchTaskStepImage string
+	goStepImage        string
+	bufStepImage       string
+	gitStepImage       string
+	utilStepImage      string
+	imgStepImage       string
+}
 
 func main() {
 	// read and validate config
@@ -59,9 +69,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	// define the output path based on the CI type
+	outputPath := ""
+	switch ciType {
+	case "drone":
+		outputPath = path.Join(projectPath, ".drone.yml")
+	case "circle":
+		outputPath = path.Join(projectPath, ".circleci/config.yml")
+	}
+
 	// read taskfile
 	taskfilePath := path.Join(projectPath, "taskfile.yml")
-	taskfile, err := schema.LoadTaskFile(taskfilePath)
+	taskfile, err := configs.LoadTaskFile(taskfilePath)
 	if err != nil {
 		l.Error("error loading Taskfile", "error", err)
 		os.Exit(1)
@@ -74,43 +93,45 @@ func main() {
 		}
 	}
 
-	// TODO: read and parse incumbent task file if possible
-
-	// determine images to use in steps below (TODO: use existing versions)
-	fetchTaskStepImage := "ghcr.io/markormesher/task-fetcher:v0.4.1"
-	goStepImage := "docker.io/golang:1.23.4"
-	bufStepImage := "docker.io/bufbuild/buf:1.48.0"
-	gitStepImage := "docker.io/alpine/git:v2.47.1"
-	utilStepImage := ""
-	imgStepImage := ""
+	// extract image versions from existing CI files if possible
+	imageSet := ImageSet{}
 
 	switch ciType {
 	case "drone":
-		utilStepImage = "docker.io/busybox:1.37.0"
-		imgStepImage = "quay.io/podman/stable:v5.3.1"
+		droneConfig, err := configs.LoadDroneConfigIfPresent(outputPath)
+		if err != nil {
+			l.Error("Error reading existing Drone config", "error", err)
+		}
+		if droneConfig != nil {
+			imageSet = extractImagesFromDroneCircle(*droneConfig)
+		}
 
 	case "circle":
-		utilStepImage = "cimg/base:2024.12"
-		imgStepImage = utilStepImage
-
+		circleConfig, err := configs.LoadCircleConfigIfPresent(outputPath)
+		if err != nil {
+			l.Error("Error reading existing Circle config", "error", err)
+		}
+		if circleConfig != nil {
+			imageSet = extractImagesFromCircleConfig(*circleConfig)
+		}
 	}
 
-	// generate CI steps based on tasks
-	steps := make([]*schema.GenericCiStep, 0)
+	imageSet.populateMissingImages(ciType)
 
-	// needed in Circle only: checkout
+	// generate CI steps based on tasks
+	steps := make([]*configs.GenericCiStep, 0)
+
 	if ciType == "circle" {
-		steps = append(steps, &schema.GenericCiStep{
+		steps = append(steps, &configs.GenericCiStep{
 			Name:           "checkout",
-			Image:          utilStepImage,
+			Image:          imageSet.utilStepImage,
 			IsCheckoutStep: true,
 		})
 	}
 
-	// always needed: fetch the task binary
-	steps = append(steps, &schema.GenericCiStep{
+	steps = append(steps, &configs.GenericCiStep{
 		Name:  "fetch-task",
-		Image: fetchTaskStepImage,
+		Image: imageSet.fetchTaskStepImage,
 		Commands: []string{
 			`cp /task .`,
 		},
@@ -119,10 +140,9 @@ func main() {
 		},
 	})
 
-	// always needed: final "marker" step for branch protection rules
-	steps = append(steps, &schema.GenericCiStep{
+	steps = append(steps, &configs.GenericCiStep{
 		Name:  "ci-all",
-		Image: utilStepImage,
+		Image: imageSet.utilStepImage,
 		Commands: []string{
 			`echo "Done"`,
 		},
@@ -136,7 +156,6 @@ func main() {
 		SkipPersist: true,
 	})
 
-	// one lint or test step per 2-layer task
 	lintOrTestTaskRegex := regexp.MustCompile(`(lint|test)\-[a-z]+$`)
 	for _, name := range taskNames {
 		if lintOrTestTaskRegex.MatchString(name) {
@@ -144,14 +163,14 @@ func main() {
 			image := ""
 			switch lang {
 			case "buf":
-				image = bufStepImage
+				image = imageSet.bufStepImage
 			case "go":
-				image = goStepImage
+				image = imageSet.goStepImage
 			default:
 				l.Error("Unsupported language for lint/test task", "language", lang)
 			}
 
-			steps = append(steps, &schema.GenericCiStep{
+			steps = append(steps, &configs.GenericCiStep{
 				Name:  name,
 				Image: image,
 				Commands: []string{
@@ -166,7 +185,6 @@ func main() {
 		}
 	}
 
-	// img steps
 	if slices.Contains(taskNames, "imgrefs") {
 		// refs
 		commands := make([]string, 0)
@@ -175,9 +193,9 @@ func main() {
 		}
 		commands = append(commands, `./task imgrefs`)
 
-		steps = append(steps, &schema.GenericCiStep{
+		steps = append(steps, &configs.GenericCiStep{
 			Name:     "imgrefs",
-			Image:    gitStepImage,
+			Image:    imageSet.gitStepImage,
 			Commands: commands,
 			Dependencies: []regexp.Regexp{
 				*regexp.MustCompile(`checkout`),
@@ -195,9 +213,9 @@ func main() {
 		commands = append(commands, `./task imgbuild`)
 		commands = append(commands, `./task imgpush`)
 
-		step := schema.GenericCiStep{
+		step := configs.GenericCiStep{
 			Name:     "imgbuild-imgpush",
-			Image:    imgStepImage,
+			Image:    imageSet.imgStepImage,
 			Commands: commands,
 			Dependencies: []regexp.Regexp{
 				*regexp.MustCompile(`checkout`),
@@ -243,7 +261,7 @@ func main() {
 		return cmp.Less(steps[a].Name, steps[b].Name)
 	})
 
-	sortedSteps := make([]*schema.GenericCiStep, 0)
+	sortedSteps := make([]*configs.GenericCiStep, 0)
 	dependenciesMet := make([]string, 0)
 	for len(sortedSteps) < len(steps) {
 		sizeBefore := len(sortedSteps)
@@ -268,16 +286,11 @@ func main() {
 
 	// write out the actual config
 	var output any
-	outputPath := ""
-
 	switch ciType {
 	case "drone":
-		outputPath = path.Join(projectPath, ".drone.yml")
-		output = schema.GenerateDroneConfig(sortedSteps)
-
+		output = configs.GenerateDroneConfig(sortedSteps)
 	case "circle":
-		outputPath = path.Join(projectPath, ".circleci/config.yml")
-		output = schema.GenerateCircleConfig(sortedSteps)
+		output = configs.GenerateCircleConfig(sortedSteps)
 	}
 
 	var outputBuffer bytes.Buffer
@@ -312,5 +325,92 @@ func main() {
 	if err != nil {
 		l.Error("Error writing to CI config", "error", err)
 		os.Exit(1)
+	}
+}
+
+func extractImagesFromDroneCircle(config configs.DroneConfig) ImageSet {
+	output := ImageSet{}
+
+	for _, step := range config.Steps {
+		image := step.Image
+		switch {
+		case strings.Contains(image, "task-fetcher"):
+			output.fetchTaskStepImage = image
+		case strings.Contains(image, "golang"):
+			output.goStepImage = image
+		case strings.Contains(image, "bufbuild"):
+			output.bufStepImage = image
+		case strings.Contains(image, "git"):
+			output.gitStepImage = image
+		case strings.Contains(image, "busybox"):
+			output.utilStepImage = image
+		case strings.Contains(image, "podman"):
+			output.imgStepImage = image
+		}
+	}
+
+	return output
+}
+
+func extractImagesFromCircleConfig(config configs.CircleConfig) ImageSet {
+	output := ImageSet{}
+
+	for _, job := range config.Jobs {
+		if len(job.Docker) < 1 {
+			continue
+		}
+
+		image := job.Docker[0].Image
+		switch {
+		case strings.Contains(image, "task-fetcher"):
+			output.fetchTaskStepImage = image
+		case strings.Contains(image, "golang"):
+			output.goStepImage = image
+		case strings.Contains(image, "bufbuild"):
+			output.bufStepImage = image
+		case strings.Contains(image, "git"):
+			output.gitStepImage = image
+		case strings.Contains(image, "cimg/base"):
+			output.utilStepImage = image
+			output.imgStepImage = image
+		}
+	}
+
+	return output
+}
+
+func (s *ImageSet) populateMissingImages(ciType string) {
+	// these defaults will slowly get out of date, but they will only be applied to first-time configs and Renovate will update them anyway
+
+	if s.fetchTaskStepImage == "" {
+		s.fetchTaskStepImage = "ghcr.io/markormesher/task-fetcher:v0.4.1"
+	}
+
+	if s.goStepImage == "" {
+		s.goStepImage = "docker.io/golang:1.23.4"
+	}
+
+	if s.bufStepImage == "" {
+		s.bufStepImage = "docker.io/bufbuild/buf:1.48.0"
+	}
+
+	if s.gitStepImage == "" {
+		s.gitStepImage = "docker.io/alpine/git:v2.47.1"
+	}
+
+	if s.utilStepImage == "" {
+		if ciType == "circle" {
+			s.utilStepImage = "cimg/base:2024.12"
+		} else {
+			s.utilStepImage = "docker.io/busybox:1.37.0"
+		}
+	}
+
+	if s.imgStepImage == "" {
+		if ciType == "circle" {
+			s.imgStepImage = "cimg/base:2024.12"
+		} else {
+			s.imgStepImage = "quay.io/podman/stable:v5.3.1"
+		}
 	}
 }
