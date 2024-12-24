@@ -165,13 +165,3 @@ tasks:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     cmds:
       - cmd: gofmt -s -w .
-  test:
-    cmds:
-      - task: test-go-generate-taskfile
-  test-go:
-    cmds:
-      - task: test-go-generate-taskfile
-  test-go-generate-taskfile:
-    dir: '{{.ROOT_DIR}}/generate-taskfile'
-    cmds:
-      - cmd: go test ./...
