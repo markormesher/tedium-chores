@@ -1,3 +1,5 @@
+# This file is maintained by Tedium - manual edits will be overwritten!
+
 version: "2.1"
 jobs:
   checkout:

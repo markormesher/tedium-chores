@@ -59,24 +59,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	// read and parse task file
+	// read taskfile
 	taskfilePath := path.Join(projectPath, "taskfile.yml")
-	stat, err = os.Stat(taskfilePath)
+	taskfile, err := schema.LoadTaskFile(taskfilePath)
 	if err != nil {
-		l.Error("Error stating Taskfile", "error", err)
+		l.Error("error loading Taskfile", "error", err)
 		os.Exit(1)
 	}
-
-	taskfileContents, err := os.ReadFile(taskfilePath)
-	if err != nil {
-		l.Error("Error reading Taskfile", "error", err)
-		os.Exit(1)
-	}
-
-	var taskfile schema.TaskFile
-	decoder := yaml.NewDecoder(bytes.NewReader(taskfileContents))
-	decoder.KnownFields(false)
-	err = decoder.Decode(&taskfile)
 
 	taskNames := make([]string, 0)
 	for name, task := range taskfile.Tasks {
@@ -249,7 +238,7 @@ func main() {
 		step.ResolvedDependencies = matchedSteps
 	}
 
-	// sort steps by name and then dependency to make the output deterministic and readable
+	// sort steps by name and then by topology to make the output deterministic and readable
 	sort.Slice(steps, func(a, b int) bool {
 		return cmp.Less(steps[a].Name, steps[b].Name)
 	})
@@ -278,34 +267,48 @@ func main() {
 	}
 
 	// write out the actual config
-	var outputBuffer bytes.Buffer
+	var output any
 	outputPath := ""
 
 	switch ciType {
 	case "drone":
 		outputPath = path.Join(projectPath, ".drone.yml")
-		output := schema.GenerateDroneConfig(sortedSteps)
-		encoder := yaml.NewEncoder(&outputBuffer)
-		encoder.SetIndent(2)
-		err = encoder.Encode(output)
-		if err != nil {
-			l.Error("Couldn't marshall output")
-			os.Exit(1)
-		}
+		output = schema.GenerateDroneConfig(sortedSteps)
 
 	case "circle":
 		outputPath = path.Join(projectPath, ".circleci/config.yml")
-		output := schema.GenerateCircleConfig(sortedSteps)
-		encoder := yaml.NewEncoder(&outputBuffer)
-		encoder.SetIndent(2)
-		err = encoder.Encode(output)
-		if err != nil {
-			l.Error("Couldn't marshall output")
-			os.Exit(1)
-		}
+		output = schema.GenerateCircleConfig(sortedSteps)
 	}
 
-	err = os.WriteFile(outputPath, outputBuffer.Bytes(), 0644)
+	var outputBuffer bytes.Buffer
+	encoder := yaml.NewEncoder(&outputBuffer)
+	encoder.SetIndent(2)
+	err = encoder.Encode(output)
+	if err != nil {
+		l.Error("Couldn't marshall output")
+		os.Exit(1)
+	}
+
+	err = os.MkdirAll(path.Dir(outputPath), 0755)
+	if err != nil {
+		l.Error("Error writing to CI config", "error", err)
+		os.Exit(1)
+	}
+
+	outputFile, err := os.OpenFile(outputPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		l.Error("Error writing to CI config", "error", err)
+		os.Exit(1)
+	}
+	defer outputFile.Close()
+
+	_, err = outputFile.WriteString("# This file is maintained by Tedium - manual edits will be overwritten!\n\n")
+	if err != nil {
+		l.Error("Error writing to CI config", "error", err)
+		os.Exit(1)
+	}
+
+	_, err = outputFile.Write(outputBuffer.Bytes())
 	if err != nil {
 		l.Error("Error writing to CI config", "error", err)
 		os.Exit(1)
