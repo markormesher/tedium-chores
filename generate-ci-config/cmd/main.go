@@ -244,14 +244,7 @@ func main() {
 	}
 
 	for _, step := range steps {
-		matchedSteps := make([]string, 0)
-		for _, candidateStepName := range stepNames {
-			for _, dependencyRegex := range step.Dependencies {
-				if dependencyRegex.MatchString(candidateStepName) && !slices.Contains(matchedSteps, candidateStepName) {
-					matchedSteps = append(matchedSteps, candidateStepName)
-				}
-			}
-		}
+		matchedSteps := util.MatchingStrings(stepNames, step.Dependencies)
 		slices.Sort(matchedSteps)
 		step.ResolvedDependencies = matchedSteps
 	}
@@ -302,30 +295,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = os.MkdirAll(path.Dir(outputPath), 0755)
-	if err != nil {
-		l.Error("Error writing to CI config", "error", err)
-		os.Exit(1)
+	handleWriteError := func(err error) {
+		if err != nil {
+			l.Error("Error writing to CI config", "error", err)
+			os.Exit(1)
+		}
 	}
 
+	err = os.MkdirAll(path.Dir(outputPath), 0755)
+	handleWriteError(err)
+
 	outputFile, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		l.Error("Error writing to CI config", "error", err)
-		os.Exit(1)
-	}
+	handleWriteError(err)
 	defer outputFile.Close()
 
 	_, err = outputFile.WriteString("# This file is maintained by Tedium - manual edits will be overwritten!\n\n")
-	if err != nil {
-		l.Error("Error writing to CI config", "error", err)
-		os.Exit(1)
-	}
+	handleWriteError(err)
 
 	_, err = outputFile.Write(outputBuffer.Bytes())
-	if err != nil {
-		l.Error("Error writing to CI config", "error", err)
-		os.Exit(1)
-	}
+	handleWriteError(err)
 }
 
 func extractImagesFromDroneCircle(config configs.DroneConfig) ImageSet {
