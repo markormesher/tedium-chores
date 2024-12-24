@@ -143,11 +143,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = os.WriteFile(path.Join(projectPath, "taskfile.yml"), outputBuffer.Bytes(), 0644)
-	if countSubProjects == 0 {
-		l.Error("Error writing to taskfile", "error", err)
-		os.Exit(1)
+	handleWriteError := func(err error) {
+		if err != nil {
+			l.Error("Error writing to CI config", "error", err)
+			os.Exit(1)
+		}
 	}
+
+	outputPath := path.Join(projectPath, "taskfile.yml")
+	outputFile, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	handleWriteError(err)
+	defer outputFile.Close()
+
+	_, err = outputFile.WriteString("# This file is maintained by Tedium - manual edits will be overwritten!\n\n")
+	handleWriteError(err)
+
+	_, err = outputFile.Write(outputBuffer.Bytes())
+	handleWriteError(err)
 }
 
 func findSubProjects(projectPath string) (int, *SubProjectData) {

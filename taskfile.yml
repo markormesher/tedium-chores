@@ -1,3 +1,5 @@
+# This file is maintained by Tedium - manual edits will be overwritten!
+
 version: "3"
 includes:
   local:
@@ -108,7 +110,7 @@ tasks:
             done
           else
             echo "No .imgrefs file - nothing will be pushed"
-          	exit 1
+            exit 1
           fi
   imgpush-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
@@ -136,7 +138,7 @@ tasks:
             done
           else
             echo "No .imgrefs file - nothing will be pushed"
-          	exit 1
+            exit 1
           fi
   imgrefs:
     cmds:
