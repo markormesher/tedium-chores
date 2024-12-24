@@ -190,13 +190,17 @@ func main() {
 		})
 
 		// build + push
+		commands = make([]string, 0)
+		if ciType == "circle" {
+			commands = append(commands, `echo "${GHCR_PUBLISH_TOKEN}" | docker login ghcr.io -u markormesher --password-stdin`)
+		}
+		commands = append(commands, `./task imgbuild`)
+		commands = append(commands, `./task imgpush`)
+
 		step := schema.GenericCiStep{
-			Name:  "imgbuild-imgpush",
-			Image: imgStepImage,
-			Commands: []string{
-				`./task imgbuild`,
-				`./task imgpush`,
-			},
+			Name:     "imgbuild-imgpush",
+			Image:    imgStepImage,
+			Commands: commands,
 			Dependencies: []regexp.Regexp{
 				*regexp.MustCompile(`checkout`),
 				*regexp.MustCompile(`fetch\-task`),

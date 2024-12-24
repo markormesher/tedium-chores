@@ -40,6 +40,7 @@ jobs:
           docker_layer_caching: true
       - run:
           command: |-
+            echo "${GHCR_PUBLISH_TOKEN}" | docker login ghcr.io -u markormesher --password-stdin
             ./task imgbuild
             ./task imgpush
   imgrefs:
