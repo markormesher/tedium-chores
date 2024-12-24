@@ -104,7 +104,7 @@ func main() {
 	case "drone":
 		droneConfig, err := configs.LoadDroneConfigIfPresent(outputPath)
 		if err != nil {
-			l.Error("Error reading existing Drone config", "error", err)
+			l.Warn("Error reading existing Drone config - continuing without it", "error", err)
 		}
 		if droneConfig != nil {
 			imageSet = extractImagesFromDroneCircle(*droneConfig)
@@ -113,7 +113,7 @@ func main() {
 	case "circle":
 		circleConfig, err := configs.LoadCircleConfigIfPresent(outputPath)
 		if err != nil {
-			l.Error("Error reading existing Circle config", "error", err)
+			l.Warn("Error reading existing Circle config - continuing without it", "error", err)
 		}
 		if circleConfig != nil {
 			imageSet = extractImagesFromCircleConfig(*circleConfig)
