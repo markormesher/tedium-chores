@@ -42,7 +42,16 @@ func main() {
 	}
 
 	if ciType == "auto" {
-		// TODO: ??
+		cloneUrl := os.Getenv("TEDIUM_REPO_CLONE_URL")
+		switch {
+		case strings.Contains(cloneUrl, "github.com"):
+			ciType = "circle"
+		case strings.Contains(cloneUrl, "gitea"):
+			ciType = "drone"
+		default:
+			l.Error("Unable to determine CI type automatically", "cloneUrl", cloneUrl)
+			os.Exit(1)
+		}
 	}
 
 	if ciType != "drone" && ciType != "circle" {
