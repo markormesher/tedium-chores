@@ -23,7 +23,7 @@ if [[ "${TEDIUM_PLATFORM_TYPE}" == "gitea" ]]; then
   "enable_push": false,
   "enable_status_check": true,
   "status_check_contexts": [
-    "${check_name}
+    "${check_name}"
   ],
   "required_approvals": 0,
   "dismiss_stale_approvals": true
