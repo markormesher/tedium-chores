@@ -5,6 +5,6 @@ LABEL image.registry=ghcr.io
 LABEL image.name=markormesher/tedium-chore-apply-branch-protection
 
 COPY ./apply-branch-protection.sh /usr/local/bin/.
-RUN chmod +x ./apply-branch-protection.sh
+RUN chmod +x /usr/local/bin/apply-branch-protection.sh
 
 CMD ["/usr/local/bin/apply-branch-protection.sh"]
