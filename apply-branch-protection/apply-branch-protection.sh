@@ -30,7 +30,7 @@ if [[ "${TEDIUM_PLATFORM_TYPE}" == "gitea" ]]; then
 }
 EOF
 
-  curl -X PUT \
+  curl -X POST \
     --verbose \
     --fail \
     --header "content-type: application/json" \
