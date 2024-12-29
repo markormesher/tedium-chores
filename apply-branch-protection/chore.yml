@@ -1,0 +1,6 @@
+name: "Apply Branch Protection"
+description: "This chore configures protections for the default branch. It will only be applied when a `ci-all` CI stage is configured."
+skipFinaliseStep: true
+steps:
+  - image: "ghcr.io/markormesher/tedium-chore-apply-branch-protection:v0"
+    command: "/usr/local/bin/apply-branch-protection.sh"
