@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"io/fs"
@@ -12,7 +12,7 @@ var (
 	FIND_DIRS  = 2
 )
 
-func find(projectPath string, targets int, patterns []*regexp.Regexp, excludePatterns []*regexp.Regexp) ([]string, error) {
+func Find(projectPath string, targets int, patterns []*regexp.Regexp, excludePatterns []*regexp.Regexp) ([]string, error) {
 	findFiles := targets&FIND_FILES != 0
 	findDirs := targets&FIND_DIRS != 0
 	matches := make([]string, 0)
@@ -52,7 +52,7 @@ func find(projectPath string, targets int, patterns []*regexp.Regexp, excludePat
 	return matches, nil
 }
 
-func pathToSafeName(path string) string {
+func PathToSafeName(path string) string {
 	if path == "." {
 		return "root"
 	}

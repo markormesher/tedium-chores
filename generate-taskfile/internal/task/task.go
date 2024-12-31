@@ -1,10 +1,4 @@
-package main
-
-type SubProjectData struct {
-	ContainerImageProjects []*ImgProject
-	BufProjects            []*BufProject
-	GoProjects             []*GoProject
-}
+package task
 
 type TaskFile struct {
 	Version  string                    `yaml:"version"`
@@ -30,5 +24,3 @@ type Command struct {
 	Command string `yaml:"cmd,omitempty"`
 	Task    string `yaml:"task,omitempty"`
 }
-
-type TaskAdder func(taskFile *TaskFile) error

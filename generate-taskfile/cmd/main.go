@@ -4,18 +4,19 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"log/slog"
 	"os"
 	"path"
 	"regexp"
 	"slices"
 	"strings"
 
+	"github.com/markormesher/tedium-chores/generate-taskfile/internal/lanuages"
+	"github.com/markormesher/tedium-chores/generate-taskfile/internal/logging"
+	"github.com/markormesher/tedium-chores/generate-taskfile/internal/task"
 	"gopkg.in/yaml.v3"
 )
 
-var jsonHandler = slog.NewJSONHandler(os.Stdout, nil)
-var l = slog.New(jsonHandler)
+var l = logging.Logger
 
 func main() {
 	// read config and validate it
@@ -36,52 +37,47 @@ func main() {
 		os.Exit(1)
 	}
 
-	countSubProjects, subProjects := findSubProjects(projectPath)
-	if countSubProjects == 0 {
-		l.Error("No compatible sub-projects found in the project path")
-		os.Exit(1)
-	}
-
-	output := TaskFile{
+	// output skeleton - this will be mutated by each language to add tasks
+	taskFile := task.TaskFile{
 		Version: "3",
-		Includes: map[string]*IncludeTarget{
+		Includes: map[string]*task.IncludeTarget{
 			"local": {
 				TaskFile: "taskfile.local.yml",
 				Optional: true,
 			},
 		},
-		Tasks: map[string]*Task{},
+		Tasks: map[string]*task.Task{},
 	}
 
-	// layer 3 tasks
+	// collect projects and generate layer-3 tasks
+	allProjects := []lanuages.Project{}
+	projectFinders := []lanuages.ProjectFinder{
+		lanuages.FindBufProjects,
+		lanuages.FindContainerImageProjects,
+		lanuages.FindGoProjects,
+		lanuages.FindJsProjects,
+	}
 
-	for _, p := range subProjects.BufProjects {
-		err = p.AddTasks(&output)
+	for _, finder := range projectFinders {
+		projects, err := finder(projectPath)
 		if err != nil {
-			l.Error("Error generating Buf tasks", "error", err)
+			l.Error("error finding projects", "error", err)
 			os.Exit(1)
 		}
+		allProjects = append(allProjects, projects...)
 	}
 
-	for _, p := range subProjects.GoProjects {
-		err = p.AddTasks(&output)
+	for _, p := range allProjects {
+		err := p.AddTasks(&taskFile)
 		if err != nil {
-			l.Error("Error generating Go tasks", "error", err)
-			os.Exit(1)
-		}
-	}
-
-	for _, p := range subProjects.ContainerImageProjects {
-		err = p.AddTasks(&output)
-		if err != nil {
-			l.Error("Error generating img tasks", "error", err)
+			l.Error("error adding tasks", "error", err)
 			os.Exit(1)
 		}
 	}
 
 	// collect names of layer-3 tasks that will be exposed
 	layer3Names := make([]string, 0)
-	for name, task := range output.Tasks {
+	for name, task := range taskFile.Tasks {
 		if !task.Internal {
 			layer3Names = append(layer3Names, name)
 		}
@@ -96,18 +92,18 @@ func main() {
 
 		// all tasks have a layer-1 parent
 		layer1Name := nameChunks[0]
-		if _, ok := output.Tasks[layer1Name]; !ok {
-			output.Tasks[layer1Name] = &Task{}
+		if _, ok := taskFile.Tasks[layer1Name]; !ok {
+			taskFile.Tasks[layer1Name] = &task.Task{}
 		}
-		output.Tasks[layer1Name].Commands = append(output.Tasks[layer1Name].Commands, Command{Task: name})
+		taskFile.Tasks[layer1Name].Commands = append(taskFile.Tasks[layer1Name].Commands, task.Command{Task: name})
 
 		// not all tasks have layer-2 parent
 		if len(nameChunks) > 2 {
 			layer2Name := fmt.Sprintf("%s-%s", nameChunks[0], nameChunks[1])
-			if _, ok := output.Tasks[layer2Name]; !ok {
-				output.Tasks[layer2Name] = &Task{}
+			if _, ok := taskFile.Tasks[layer2Name]; !ok {
+				taskFile.Tasks[layer2Name] = &task.Task{}
 			}
-			output.Tasks[layer2Name].Commands = append(output.Tasks[layer2Name].Commands, Command{Task: name})
+			taskFile.Tasks[layer2Name].Commands = append(taskFile.Tasks[layer2Name].Commands, task.Command{Task: name})
 		}
 	}
 
@@ -116,19 +112,19 @@ func main() {
 	multipleLineBreaks := regexp.MustCompile(`\n\n+`)
 	blankLines := regexp.MustCompile(`^\s*$`)
 
-	for t := range output.Tasks {
-		if len(output.Tasks[t].Commands) == 0 {
+	for t := range taskFile.Tasks {
+		if len(taskFile.Tasks[t].Commands) == 0 {
 			// remove empty tasks
-			delete(output.Tasks, t)
+			delete(taskFile.Tasks, t)
 			continue
 		}
 
-		for c := range output.Tasks[t].Commands {
-			cmd := output.Tasks[t].Commands[c].Command
+		for c := range taskFile.Tasks[t].Commands {
+			cmd := taskFile.Tasks[t].Commands[c].Command
 			cmd = strings.TrimSpace(cmd)
 			cmd = blankLines.ReplaceAllString(cmd, "")
 			cmd = multipleLineBreaks.ReplaceAllString(cmd, "\n\n")
-			output.Tasks[t].Commands[c].Command = cmd
+			taskFile.Tasks[t].Commands[c].Command = cmd
 		}
 	}
 
@@ -137,7 +133,7 @@ func main() {
 	var outputBuffer bytes.Buffer
 	encoder := yaml.NewEncoder(&outputBuffer)
 	encoder.SetIndent(2)
-	err = encoder.Encode(output)
+	err = encoder.Encode(taskFile)
 	if err != nil {
 		l.Error("Couldn't marshall output")
 		os.Exit(1)
@@ -160,88 +156,4 @@ func main() {
 
 	_, err = outputFile.Write(outputBuffer.Bytes())
 	handleWriteError(err)
-}
-
-func findSubProjects(projectPath string) (int, *SubProjectData) {
-	countProjectsFound := 0
-	subProjects := SubProjectData{
-		ContainerImageProjects: make([]*ImgProject, 0),
-		GoProjects:             make([]*GoProject, 0),
-	}
-
-	// containers
-
-	containerImagePaths, err := find(
-		projectPath,
-		FIND_FILES,
-		[]*regexp.Regexp{
-			regexp.MustCompile(`(^|/)Dockerfile`),
-			regexp.MustCompile(`(^|/)Containerfile`),
-		},
-		[]*regexp.Regexp{
-			regexp.MustCompile(`(^|/)\.git/`),
-		},
-	)
-	if err != nil {
-		l.Error("Error searching for Container image projects", "error", err)
-		os.Exit(1)
-	}
-
-	for i := range containerImagePaths {
-		countProjectsFound++
-		subProjects.ContainerImageProjects = append(subProjects.ContainerImageProjects, &ImgProject{
-			ContainerFileName:   path.Base(containerImagePaths[i]),
-			ProjectRelativePath: path.Dir(containerImagePaths[i]),
-		})
-	}
-
-	// buf
-
-	bufProjectPaths, err := find(
-		projectPath,
-		FIND_FILES,
-		[]*regexp.Regexp{
-			regexp.MustCompile(`(^|/)buf\.gen\.ya?ml`),
-		},
-		[]*regexp.Regexp{
-			regexp.MustCompile(`(^|/)\.git/`),
-		},
-	)
-	if err != nil {
-		l.Error("Error searching for Buf projects", "error", err)
-		os.Exit(1)
-	}
-
-	for i := range bufProjectPaths {
-		countProjectsFound++
-		subProjects.BufProjects = append(subProjects.BufProjects, &BufProject{
-			ProjectRelativePath: path.Dir(bufProjectPaths[i]),
-		})
-	}
-
-	// go
-
-	goProjectPaths, err := find(
-		projectPath,
-		FIND_FILES,
-		[]*regexp.Regexp{
-			regexp.MustCompile(`(^|/)go\.mod`),
-		},
-		[]*regexp.Regexp{
-			regexp.MustCompile(`(^|/)\.git/`),
-		},
-	)
-	if err != nil {
-		l.Error("Error searching for Go projects", "error", err)
-		os.Exit(1)
-	}
-
-	for i := range goProjectPaths {
-		countProjectsFound++
-		subProjects.GoProjects = append(subProjects.GoProjects, &GoProject{
-			ProjectRelativePath: path.Dir(goProjectPaths[i]),
-		})
-	}
-
-	return countProjectsFound, &subProjects
 }
