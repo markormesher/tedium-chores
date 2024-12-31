@@ -421,7 +421,7 @@ tasks:
     dir: '{{.ROOT_DIR}}/generate-ci-config'
     cmds:
       - cmd: |-
-          lint_diff=$(gofmt -e -s -d .)
+          lint_diff=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
           if [[ ! -z "$lint_diff" ]]; then
             echo "Lint errors:"
             echo "$lint_diff"
@@ -431,7 +431,7 @@ tasks:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     cmds:
       - cmd: |-
-          lint_diff=$(gofmt -e -s -d .)
+          lint_diff=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
           if [[ ! -z "$lint_diff" ]]; then
             echo "Lint errors:"
             echo "$lint_diff"
