@@ -170,10 +170,8 @@ func main() {
 		steps = append(steps, &configs.GenericCiStep{
 			Name:  "deps-go",
 			Image: imageSet.goStepImage,
-			Environment: map[string]string{
-				"GOPATH": "~/project/.go",
-			},
 			Commands: []string{
+				`export GOPATH=$(pwd)/.go`,
 				`./task deps-go`,
 			},
 			Dependencies: []regexp.Regexp{
