@@ -45,7 +45,8 @@ type CircleJobStepSetupDockerConfig struct {
 }
 
 type CircleJobStepRunConfig struct {
-	Command string `yaml:"command"`
+	Command     string            `yaml:"command"`
+	Environment map[string]string `yaml:"environment,omitempty"`
 }
 
 type CircleJobStepPersistConfig struct {
@@ -121,18 +122,17 @@ func GenerateCircleConfig(steps []*GenericCiStep) CircleConfig {
 		if len(step.Commands) > 0 {
 			job.Steps = append(job.Steps, CirlceJobStepConfig{
 				Run: CircleJobStepRunConfig{
-					Command: strings.Join(step.Commands, "\n"),
+					Command:     strings.Join(step.Commands, "\n"),
+					Environment: step.Environment,
 				},
 			})
 		}
 
-		if !step.SkipPersist {
+		if len(step.PersistPatterns) > 0 {
 			job.Steps = append(job.Steps, CirlceJobStepConfig{
 				Persist: CircleJobStepPersistConfig{
-					Root: ".",
-					Paths: []string{
-						".",
-					},
+					Root:  ".",
+					Paths: step.PersistPatterns,
 				},
 			})
 		}

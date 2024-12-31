@@ -16,7 +16,7 @@ type GoProject struct {
 func FindGoProjects(projectPath string) ([]Project, error) {
 	output := []Project{}
 
-	projectPaths, err := util.Find(
+	goModPaths, err := util.Find(
 		projectPath,
 		util.FIND_FILES,
 		[]*regexp.Regexp{
@@ -30,7 +30,7 @@ func FindGoProjects(projectPath string) ([]Project, error) {
 		return nil, fmt.Errorf("error searching for Go projects: %w", err)
 	}
 
-	for _, p := range projectPaths {
+	for _, p := range goModPaths {
 		output = append(output, &GoProject{
 			ProjectRelativePath: path.Dir(p),
 		})
@@ -41,6 +41,7 @@ func FindGoProjects(projectPath string) ([]Project, error) {
 
 func (p *GoProject) AddTasks(taskFile *task.TaskFile) error {
 	adders := []TaskAdder{
+		p.addDepsTask,
 		p.addLintTask,
 		p.addLintFixTask,
 		p.addTestTask,
@@ -51,6 +52,18 @@ func (p *GoProject) AddTasks(taskFile *task.TaskFile) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (p *GoProject) addDepsTask(taskFile *task.TaskFile) error {
+	name := fmt.Sprintf("deps-go-%s", util.PathToSafeName(p.ProjectRelativePath))
+	taskFile.Tasks[name] = &task.Task{
+		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Commands: []task.Command{
+			{Command: `go mod tidy && go mod download --json`},
+		},
 	}
 
 	return nil

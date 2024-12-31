@@ -6,6 +6,22 @@ includes:
     taskfile: taskfile.local.yml
     optional: true
 tasks:
+  deps:
+    cmds:
+      - task: deps-go-generate-ci-config
+      - task: deps-go-generate-taskfile
+  deps-go:
+    cmds:
+      - task: deps-go-generate-ci-config
+      - task: deps-go-generate-taskfile
+  deps-go-generate-ci-config:
+    dir: '{{.ROOT_DIR}}/generate-ci-config'
+    cmds:
+      - cmd: go mod tidy && go mod download --json
+  deps-go-generate-taskfile:
+    dir: '{{.ROOT_DIR}}/generate-taskfile'
+    cmds:
+      - cmd: go mod tidy && go mod download --json
   imgbuild:
     cmds:
       - task: imgbuild-apply-branch-protection

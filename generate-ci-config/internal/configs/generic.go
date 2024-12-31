@@ -11,7 +11,7 @@ type GenericCiStep struct {
 	ResolvedDependencies []string
 
 	// used for Circle only
-	IsCheckoutStep bool
-	NeedsDocker    bool
-	SkipPersist    bool
+	IsCheckoutStep  bool
+	NeedsDocker     bool
+	PersistPatterns []string
 }

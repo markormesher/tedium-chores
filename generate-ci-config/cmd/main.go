@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"path"
@@ -22,12 +23,13 @@ var l = slog.New(jsonHandler)
 
 // ImageSet is a utility type to store the container image references used for various steps.
 type ImageSet struct {
-	fetchTaskStepImage string
-	goStepImage        string
 	bufStepImage       string
+	fetchTaskStepImage string
 	gitStepImage       string
-	utilStepImage      string
+	goStepImage        string
 	imgStepImage       string
+	jsStepImage        string
+	utilStepImage      string
 }
 
 func main() {
@@ -130,6 +132,9 @@ func main() {
 			Name:           "checkout",
 			Image:          imageSet.utilStepImage,
 			IsCheckoutStep: true,
+			PersistPatterns: []string{
+				".",
+			},
 		})
 	}
 
@@ -138,6 +143,9 @@ func main() {
 		Image: imageSet.fetchTaskStepImage,
 		Commands: []string{
 			`cp /task .`,
+		},
+		PersistPatterns: []string{
+			"./task",
 		},
 		Dependencies: []regexp.Regexp{
 			*regexp.MustCompile(`checkout`),
@@ -151,40 +159,77 @@ func main() {
 			`echo "Done"`,
 		},
 		Dependencies: []regexp.Regexp{
-			*regexp.MustCompile(`checkout`),
-			*regexp.MustCompile(`fetch\-task`),
+			*regexp.MustCompile(`deps\-.*`),
 			*regexp.MustCompile(`lint\-.*`),
 			*regexp.MustCompile(`test\-.*`),
 			*regexp.MustCompile(`img.*`),
 		},
-		SkipPersist: true,
 	})
+
+	if slices.Contains(taskNames, "deps-go") {
+		steps = append(steps, &configs.GenericCiStep{
+			Name:  "deps-go",
+			Image: imageSet.goStepImage,
+			Commands: []string{
+				`export GOPATH=$(pwd)/.go`,
+				`./task deps-go`,
+			},
+			PersistPatterns: []string{
+				"./.go",
+			},
+			Dependencies: []regexp.Regexp{
+				*regexp.MustCompile(`checkout`),
+				*regexp.MustCompile(`fetch\-task`),
+			},
+		})
+	}
+
+	if slices.Contains(taskNames, "deps-js") {
+		steps = append(steps, &configs.GenericCiStep{
+			Name:  "deps-js",
+			Image: imageSet.jsStepImage,
+			Commands: []string{
+				`corepack enable`,
+				`./task deps-js`,
+			},
+			PersistPatterns: []string{
+				"./**/node_modules",
+			},
+			Dependencies: []regexp.Regexp{
+				*regexp.MustCompile(`checkout`),
+				*regexp.MustCompile(`fetch\-task`),
+			},
+		})
+	}
 
 	lintOrTestTaskRegex := regexp.MustCompile(`(lint|test)\-[a-z]+$`)
 	for _, name := range taskNames {
 		if lintOrTestTaskRegex.MatchString(name) {
 			lang := strings.Split(name, "-")[1]
-			image := ""
-			switch lang {
-			case "buf":
-				image = imageSet.bufStepImage
-			case "go":
-				image = imageSet.goStepImage
-			default:
-				l.Error("Unsupported language for lint/test task", "language", lang)
+			image, err := getImageForLanguageTask(imageSet, name)
+			if err != nil {
+				l.Error("unable to determine image for step", "error", err)
+				os.Exit(1)
 			}
 
+			commands := make([]string, 0)
+			switch lang {
+			case "go":
+				commands = append(commands, `export GOPATH=$(pwd)/.go`)
+			case "js":
+				commands = append(commands, `corepack enable`)
+			}
+			commands = append(commands, fmt.Sprintf("./task %s", name))
+
 			steps = append(steps, &configs.GenericCiStep{
-				Name:  name,
-				Image: image,
-				Commands: []string{
-					`./task ` + name,
-				},
+				Name:     name,
+				Image:    image,
+				Commands: commands,
 				Dependencies: []regexp.Regexp{
 					*regexp.MustCompile(`checkout`),
 					*regexp.MustCompile(`fetch\-task`),
+					*regexp.MustCompile(fmt.Sprintf(`deps\-%s`, lang)),
 				},
-				SkipPersist: true,
 			})
 		}
 	}
@@ -201,11 +246,12 @@ func main() {
 			Name:     "imgrefs",
 			Image:    imageSet.gitStepImage,
 			Commands: commands,
+			PersistPatterns: []string{
+				"./**/.imgrefs",
+			},
 			Dependencies: []regexp.Regexp{
 				*regexp.MustCompile(`checkout`),
 				*regexp.MustCompile(`fetch\-task`),
-				*regexp.MustCompile(`lint\-.*`),
-				*regexp.MustCompile(`test\-.*`),
 			},
 		})
 
@@ -228,7 +274,6 @@ func main() {
 				*regexp.MustCompile(`test\-.*`),
 				*regexp.MustCompile(`imgrefs`),
 			},
-			SkipPersist: true,
 			NeedsDocker: true,
 		}
 
@@ -320,24 +365,40 @@ func main() {
 	handleWriteError(err)
 }
 
+func getImageForLanguageTask(imageSet ImageSet, taskName string) (string, error) {
+	lang := strings.Split(taskName, "-")[1]
+	switch lang {
+	case "buf":
+		return imageSet.bufStepImage, nil
+	case "go":
+		return imageSet.goStepImage, nil
+	case "js":
+		return imageSet.jsStepImage, nil
+	default:
+		return "", fmt.Errorf("unsupported language '%s'", lang)
+	}
+}
+
 func extractImagesFromDroneCircle(config configs.DroneConfig) ImageSet {
 	output := ImageSet{}
 
 	for _, step := range config.Steps {
 		image := step.Image
 		switch {
-		case strings.Contains(image, "task-fetcher"):
-			output.fetchTaskStepImage = image
-		case strings.Contains(image, "golang"):
-			output.goStepImage = image
 		case strings.Contains(image, "bufbuild"):
 			output.bufStepImage = image
-		case strings.Contains(image, "git"):
-			output.gitStepImage = image
 		case strings.Contains(image, "busybox"):
 			output.utilStepImage = image
+		case strings.Contains(image, "git"):
+			output.gitStepImage = image
+		case strings.Contains(image, "golang"):
+			output.goStepImage = image
+		case strings.Contains(image, "node"):
+			output.jsStepImage = image
 		case strings.Contains(image, "podman"):
 			output.imgStepImage = image
+		case strings.Contains(image, "task-fetcher"):
+			output.fetchTaskStepImage = image
 		}
 	}
 
@@ -354,17 +415,19 @@ func extractImagesFromCircleConfig(config configs.CircleConfig) ImageSet {
 
 		image := job.Docker[0].Image
 		switch {
-		case strings.Contains(image, "task-fetcher"):
-			output.fetchTaskStepImage = image
-		case strings.Contains(image, "golang"):
-			output.goStepImage = image
 		case strings.Contains(image, "bufbuild"):
 			output.bufStepImage = image
-		case strings.Contains(image, "git"):
-			output.gitStepImage = image
 		case strings.Contains(image, "cimg/base"):
 			output.utilStepImage = image
 			output.imgStepImage = image
+		case strings.Contains(image, "git"):
+			output.gitStepImage = image
+		case strings.Contains(image, "golang"):
+			output.goStepImage = image
+		case strings.Contains(image, "node"):
+			output.jsStepImage = image
+		case strings.Contains(image, "task-fetcher"):
+			output.fetchTaskStepImage = image
 		}
 	}
 
@@ -374,28 +437,20 @@ func extractImagesFromCircleConfig(config configs.CircleConfig) ImageSet {
 func (s *ImageSet) populateMissingImages(ciType string) {
 	// these defaults will slowly get out of date, but they will only be applied to first-time configs and Renovate will update them anyway
 
-	if s.fetchTaskStepImage == "" {
-		s.fetchTaskStepImage = "ghcr.io/markormesher/task-fetcher:v0.4.1"
-	}
-
-	if s.goStepImage == "" {
-		s.goStepImage = "docker.io/golang:1.23.4"
-	}
-
 	if s.bufStepImage == "" {
 		s.bufStepImage = "docker.io/bufbuild/buf:1.48.0"
+	}
+
+	if s.fetchTaskStepImage == "" {
+		s.fetchTaskStepImage = "ghcr.io/markormesher/task-fetcher:v0.4.1"
 	}
 
 	if s.gitStepImage == "" {
 		s.gitStepImage = "docker.io/alpine/git:v2.47.1"
 	}
 
-	if s.utilStepImage == "" {
-		if ciType == "circle" {
-			s.utilStepImage = "cimg/base:2024.12"
-		} else {
-			s.utilStepImage = "docker.io/busybox:1.37.0"
-		}
+	if s.goStepImage == "" {
+		s.goStepImage = "docker.io/golang:1.23.4"
 	}
 
 	if s.imgStepImage == "" {
@@ -403,6 +458,18 @@ func (s *ImageSet) populateMissingImages(ciType string) {
 			s.imgStepImage = "cimg/base:2024.12"
 		} else {
 			s.imgStepImage = "quay.io/podman/stable:v5.3.1"
+		}
+	}
+
+	if s.jsStepImage == "" {
+		s.jsStepImage = "docker.io/node:23.5.0-slim"
+	}
+
+	if s.utilStepImage == "" {
+		if ciType == "circle" {
+			s.utilStepImage = "cimg/base:2024.12"
+		} else {
+			s.utilStepImage = "docker.io/busybox:1.37.0"
 		}
 	}
 }
