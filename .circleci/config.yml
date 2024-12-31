@@ -30,6 +30,10 @@ jobs:
           command: |-
             export GOPATH=$(pwd)/.go
             ./task deps-go
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./.go
   fetch-task:
     docker:
       - image: ghcr.io/markormesher/task-fetcher:v0.5.1
@@ -74,7 +78,9 @@ jobs:
       - attach_workspace:
           at: .
       - run:
-          command: ./task lint-go
+          command: |-
+            export GOPATH=$(pwd)/.go
+            ./task lint-go
 workflows:
   version: 2
   main:

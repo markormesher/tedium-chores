@@ -174,6 +174,9 @@ func main() {
 				`export GOPATH=$(pwd)/.go`,
 				`./task deps-go`,
 			},
+			PersistPatterns: []string{
+				"./.go",
+			},
 			Dependencies: []regexp.Regexp{
 				*regexp.MustCompile(`checkout`),
 				*regexp.MustCompile(`fetch\-task`),
@@ -210,7 +213,10 @@ func main() {
 			}
 
 			commands := make([]string, 0)
-			if lang == "js" {
+			switch lang {
+			case "go":
+				commands = append(commands, `export GOPATH=$(pwd)/.go`)
+			case "js":
 				commands = append(commands, `corepack enable`)
 			}
 			commands = append(commands, fmt.Sprintf("./task %s", name))
