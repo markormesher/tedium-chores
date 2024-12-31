@@ -166,38 +166,39 @@ func main() {
 		},
 	})
 
-	depsTaskRegex := regexp.MustCompile(`deps\-[a-z]+$`)
-	for _, name := range taskNames {
-		if depsTaskRegex.MatchString(name) {
-			lang := strings.Split(name, "-")[1]
-			image, err := getImageForLanguageTask(imageSet, name)
-			if err != nil {
-				l.Error("unable to determine image for step", "error", err)
-				os.Exit(1)
-			}
+	if slices.Contains(taskNames, "deps-go") {
+		steps = append(steps, &configs.GenericCiStep{
+			Name:  "deps-go",
+			Image: imageSet.goStepImage,
+			Environment: map[string]string{
+				"GOPATH": "~/project/.go",
+			},
+			Commands: []string{
+				`./task deps-go`,
+			},
+			Dependencies: []regexp.Regexp{
+				*regexp.MustCompile(`checkout`),
+				*regexp.MustCompile(`fetch\-task`),
+			},
+		})
+	}
 
-			commands := make([]string, 0)
-			persistPatterns := make([]string, 0)
-
-			switch lang {
-			case "js":
-				commands = append(commands, `corepack enable`)
-				persistPatterns = append(persistPatterns, "./**/node_modules")
-			}
-
-			commands = append(commands, fmt.Sprintf("./task %s", name))
-
-			steps = append(steps, &configs.GenericCiStep{
-				Name:            name,
-				Image:           image,
-				Commands:        commands,
-				PersistPatterns: persistPatterns,
-				Dependencies: []regexp.Regexp{
-					*regexp.MustCompile(`checkout`),
-					*regexp.MustCompile(`fetch\-task`),
-				},
-			})
-		}
+	if slices.Contains(taskNames, "deps-js") {
+		steps = append(steps, &configs.GenericCiStep{
+			Name:  "deps-js",
+			Image: imageSet.jsStepImage,
+			Commands: []string{
+				`corepack enable`,
+				`./task deps-js`,
+			},
+			PersistPatterns: []string{
+				"./**/node_modules",
+			},
+			Dependencies: []regexp.Regexp{
+				*regexp.MustCompile(`checkout`),
+				*regexp.MustCompile(`fetch\-task`),
+			},
+		})
 	}
 
 	lintOrTestTaskRegex := regexp.MustCompile(`(lint|test)\-[a-z]+$`)
