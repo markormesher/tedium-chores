@@ -27,9 +27,9 @@ jobs:
       - attach_workspace:
           at: .
       - run:
-          command: ./task deps-go
-          environment:
-            GOPATH: ~/project/.go
+          command: |-
+            export GOPATH=$(pwd)/.go
+            ./task deps-go
   fetch-task:
     docker:
       - image: ghcr.io/markormesher/task-fetcher:v0.5.1
