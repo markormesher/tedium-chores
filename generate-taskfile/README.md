@@ -13,9 +13,15 @@ The nested task structure is generally **per-type -> per-language -> per-project
 - [Buf](https://buf.build)
 - Go
 - Container images (via `Containerfile` or `Dockerfile`)
+- JavaScript (incl. TypeScript)
 
 ## Supported Tasks
 
+- `deps`
+  - `deps-go`
+    - _per-project tasks_
+  - `deps-js`
+    - _per-project tasks_
 - `gen` _(code generation)_
   - `gen-buf`
     - _per-project tasks_
@@ -24,11 +30,17 @@ The nested task structure is generally **per-type -> per-language -> per-project
     - _per-project tasks_
   - `lint-go`
     - _per-project tasks_
+  - `lint-js`
+    - _per-project tasks_
 - `lintfix`
   - `lintfix-go`
     - _per-project tasks_
+  - `lintfix-js`
+    - _per-project tasks_
 - `test`
   - `test-go`
+    - _per-project tasks_
+  - `test-js`
     - _per-project tasks_
 - `imgrefs`
   - _per-project tasks_

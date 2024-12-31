@@ -16,7 +16,7 @@ type BufProject struct {
 func FindBufProjects(projectPath string) ([]Project, error) {
 	output := []Project{}
 
-	projectPaths, err := util.Find(
+	bufGenPaths, err := util.Find(
 		projectPath,
 		util.FIND_FILES,
 		[]*regexp.Regexp{
@@ -30,7 +30,7 @@ func FindBufProjects(projectPath string) ([]Project, error) {
 		return nil, fmt.Errorf("error searching for Buf projects: %w", err)
 	}
 
-	for _, p := range projectPaths {
+	for _, p := range bufGenPaths {
 		output = append(output, &BufProject{
 			ProjectRelativePath: path.Dir(p),
 		})

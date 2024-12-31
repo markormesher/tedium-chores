@@ -17,7 +17,7 @@ type ContainerImageProject struct {
 func FindContainerImageProjects(projectPath string) ([]Project, error) {
 	output := []Project{}
 
-	projectPaths, err := util.Find(
+	imgManifestPaths, err := util.Find(
 		projectPath,
 		util.FIND_FILES,
 		[]*regexp.Regexp{
@@ -32,7 +32,7 @@ func FindContainerImageProjects(projectPath string) ([]Project, error) {
 		return nil, fmt.Errorf("error searching for container image projects: %w", err)
 	}
 
-	for _, p := range projectPaths {
+	for _, p := range imgManifestPaths {
 		output = append(output, &ContainerImageProject{
 			ContainerFileName:   path.Base(p),
 			ProjectRelativePath: path.Dir(p),
