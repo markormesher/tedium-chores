@@ -193,6 +193,7 @@ func main() {
 				`./task deps-js`,
 			},
 			PersistPatterns: []string{
+				"./node_modules",
 				"./**/node_modules",
 			},
 			Dependencies: []regexp.Regexp{
@@ -247,6 +248,7 @@ func main() {
 			Image:    imageSet.gitStepImage,
 			Commands: commands,
 			PersistPatterns: []string{
+				"./.imgrefs",
 				"./**/.imgrefs",
 			},
 			Dependencies: []regexp.Regexp{

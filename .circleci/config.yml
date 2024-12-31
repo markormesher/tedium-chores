@@ -70,6 +70,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
+            - ./.imgrefs
             - ./**/.imgrefs
   lint-go:
     docker:
