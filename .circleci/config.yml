@@ -20,6 +20,18 @@ jobs:
           at: .
       - run:
           command: echo "Done"
+  deps-go:
+    docker:
+      - image: docker.io/golang:1.23.4
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          command: ./task deps-go
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
   fetch-task:
     docker:
       - image: ghcr.io/markormesher/task-fetcher:v0.5.1
@@ -80,18 +92,25 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - lint-go:
+      - imgrefs:
           requires:
             - checkout
             - fetch-task
           filters:
             tags:
               only: /.*/
-      - imgrefs:
+      - deps-go:
           requires:
             - checkout
             - fetch-task
-            - lint-go
+          filters:
+            tags:
+              only: /.*/
+      - lint-go:
+          requires:
+            - checkout
+            - deps-go
+            - fetch-task
           filters:
             tags:
               only: /.*/
@@ -106,8 +125,7 @@ workflows:
               only: /.*/
       - ci-all:
           requires:
-            - checkout
-            - fetch-task
+            - deps-go
             - imgbuild-imgpush
             - imgrefs
             - lint-go

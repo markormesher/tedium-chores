@@ -62,7 +62,7 @@ func (p *GoProject) addDepsTask(taskFile *task.TaskFile) error {
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []task.Command{
-			{Command: `go mod tidy && go mod download`},
+			{Command: `go mod tidy && go mod download --json`},
 		},
 	}
 
