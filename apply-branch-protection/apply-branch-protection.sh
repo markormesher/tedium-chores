@@ -29,6 +29,12 @@ if [[ "${TEDIUM_PLATFORM_TYPE}" == "gitea" ]]; then
   "dismiss_stale_approvals": true
 }
 EOF
+  # gitea only allows us to POST a new rule or PATCH an existing one, so we just DELETE it first and re-create it
+
+  curl -X DELETE \
+    --verbose \
+    -H "Authorization: Bearer ${TEDIUM_PLATFORM_TOKEN}" \
+    "${TEDIUM_PLATFORM_API_BASE_URL}/repos/${TEDIUM_REPO_OWNER}/${TEDIUM_REPO_NAME}/branch_protections/${TEDIUM_REPO_DEFAULT_BRANCH}"
 
   curl -X POST \
     --verbose \
