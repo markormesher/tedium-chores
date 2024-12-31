@@ -132,6 +132,9 @@ func main() {
 			Name:           "checkout",
 			Image:          imageSet.utilStepImage,
 			IsCheckoutStep: true,
+			PersistPatterns: []string{
+				".",
+			},
 		})
 	}
 
@@ -140,6 +143,9 @@ func main() {
 		Image: imageSet.fetchTaskStepImage,
 		Commands: []string{
 			`cp /task .`,
+		},
+		PersistPatterns: []string{
+			"./task",
 		},
 		Dependencies: []regexp.Regexp{
 			*regexp.MustCompile(`checkout`),
@@ -158,7 +164,6 @@ func main() {
 			*regexp.MustCompile(`test\-.*`),
 			*regexp.MustCompile(`img.*`),
 		},
-		SkipPersist: true,
 	})
 
 	depsTaskRegex := regexp.MustCompile(`deps\-[a-z]+$`)
@@ -172,15 +177,21 @@ func main() {
 			}
 
 			commands := make([]string, 0)
-			if lang == "js" {
+			persistPatterns := make([]string, 0)
+
+			switch lang {
+			case "js":
 				commands = append(commands, `corepack enable`)
+				persistPatterns = append(persistPatterns, "./**/node_modules")
 			}
+
 			commands = append(commands, fmt.Sprintf("./task %s", name))
 
 			steps = append(steps, &configs.GenericCiStep{
-				Name:     name,
-				Image:    image,
-				Commands: commands,
+				Name:            name,
+				Image:           image,
+				Commands:        commands,
+				PersistPatterns: persistPatterns,
 				Dependencies: []regexp.Regexp{
 					*regexp.MustCompile(`checkout`),
 					*regexp.MustCompile(`fetch\-task`),
@@ -214,7 +225,6 @@ func main() {
 					*regexp.MustCompile(`fetch\-task`),
 					*regexp.MustCompile(fmt.Sprintf(`deps\-%s`, lang)),
 				},
-				SkipPersist: true,
 			})
 		}
 	}
@@ -231,6 +241,9 @@ func main() {
 			Name:     "imgrefs",
 			Image:    imageSet.gitStepImage,
 			Commands: commands,
+			PersistPatterns: []string{
+				"./**/.imgrefs",
+			},
 			Dependencies: []regexp.Regexp{
 				*regexp.MustCompile(`checkout`),
 				*regexp.MustCompile(`fetch\-task`),
@@ -256,7 +269,6 @@ func main() {
 				*regexp.MustCompile(`test\-.*`),
 				*regexp.MustCompile(`imgrefs`),
 			},
-			SkipPersist: true,
 			NeedsDocker: true,
 		}
 

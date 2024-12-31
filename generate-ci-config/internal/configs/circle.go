@@ -126,13 +126,11 @@ func GenerateCircleConfig(steps []*GenericCiStep) CircleConfig {
 			})
 		}
 
-		if !step.SkipPersist {
+		if len(step.PersistPatterns) > 0 {
 			job.Steps = append(job.Steps, CirlceJobStepConfig{
 				Persist: CircleJobStepPersistConfig{
-					Root: ".",
-					Paths: []string{
-						".",
-					},
+					Root:  ".",
+					Paths: step.PersistPatterns,
 				},
 			})
 		}

@@ -28,10 +28,6 @@ jobs:
           at: .
       - run:
           command: ./task deps-go
-      - persist_to_workspace:
-          root: .
-          paths:
-            - .
   fetch-task:
     docker:
       - image: ghcr.io/markormesher/task-fetcher:v0.5.1
@@ -43,7 +39,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - .
+            - ./task
   imgbuild-imgpush:
     docker:
       - image: cimg/base:2024.12
@@ -68,7 +64,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - .
+            - ./**/.imgrefs
   lint-go:
     docker:
       - image: docker.io/golang:1.23.4
