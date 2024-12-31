@@ -1,16 +1,48 @@
-package main
+package lanuages
 
 import (
 	"fmt"
 	"path"
+	"regexp"
+
+	"github.com/markormesher/tedium-chores/generate-taskfile/internal/task"
+	"github.com/markormesher/tedium-chores/generate-taskfile/internal/util"
 )
 
-type ImgProject struct {
+type ContainerImageProject struct {
 	ContainerFileName   string
 	ProjectRelativePath string
 }
 
-func (p *ImgProject) AddTasks(taskFile *TaskFile) error {
+func FindContainerImageProjects(projectPath string) ([]Project, error) {
+	output := []Project{}
+
+	projectPaths, err := util.Find(
+		projectPath,
+		util.FIND_FILES,
+		[]*regexp.Regexp{
+			regexp.MustCompile(`(^|/)Dockerfile`),
+			regexp.MustCompile(`(^|/)Containerfile`),
+		},
+		[]*regexp.Regexp{
+			regexp.MustCompile(`(^|/)\.git/`),
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error searching for container image projects: %w", err)
+	}
+
+	for _, p := range projectPaths {
+		output = append(output, &ContainerImageProject{
+			ContainerFileName:   path.Base(p),
+			ProjectRelativePath: path.Dir(p),
+		})
+	}
+
+	return output, nil
+}
+
+func (p *ContainerImageProject) AddTasks(taskFile *task.TaskFile) error {
 	adders := []TaskAdder{
 		p.addRefsTask,
 		p.addBuildTask,
@@ -27,7 +59,7 @@ func (p *ImgProject) AddTasks(taskFile *TaskFile) error {
 	return nil
 }
 
-func (p *ImgProject) builderSetup() string {
+func (p *ContainerImageProject) builderSetup() string {
 	return `
 if command -v podman >/dev/null 2>&1; then
   # Podman for building locally or in Tatsu CI
@@ -42,11 +74,11 @@ fi
 `
 }
 
-func (p *ImgProject) addRefsTask(taskFile *TaskFile) error {
-	name := fmt.Sprintf("imgrefs-%s", pathToSafeName(p.ProjectRelativePath))
-	taskFile.Tasks[name] = &Task{
+func (p *ContainerImageProject) addRefsTask(taskFile *task.TaskFile) error {
+	name := fmt.Sprintf("imgrefs-%s", util.PathToSafeName(p.ProjectRelativePath))
+	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
-		Commands: []Command{
+		Commands: []task.Command{
 			{Command: `
 set -euo pipefail
 
@@ -109,14 +141,14 @@ cat .imgrefs | grep "." || echo "None"
 	return nil
 }
 
-func (p *ImgProject) addBuildTask(taskFile *TaskFile) error {
-	name := fmt.Sprintf("imgbuild-%s", pathToSafeName(p.ProjectRelativePath))
-	taskFile.Tasks[name] = &Task{
+func (p *ContainerImageProject) addBuildTask(taskFile *task.TaskFile) error {
+	name := fmt.Sprintf("imgbuild-%s", util.PathToSafeName(p.ProjectRelativePath))
+	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Dependencies: []string{
-			fmt.Sprintf("imgrefs-%s", pathToSafeName(p.ProjectRelativePath)),
+			fmt.Sprintf("imgrefs-%s", util.PathToSafeName(p.ProjectRelativePath)),
 		},
-		Commands: []Command{
+		Commands: []task.Command{
 			{Command: `
 set -euo pipefail
 
@@ -141,14 +173,14 @@ fi
 	return nil
 }
 
-func (p *ImgProject) addPushTask(taskFile *TaskFile) error {
-	name := fmt.Sprintf("imgpush-%s", pathToSafeName(p.ProjectRelativePath))
-	taskFile.Tasks[name] = &Task{
+func (p *ContainerImageProject) addPushTask(taskFile *task.TaskFile) error {
+	name := fmt.Sprintf("imgpush-%s", util.PathToSafeName(p.ProjectRelativePath))
+	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Dependencies: []string{
-			fmt.Sprintf("imgrefs-%s", pathToSafeName(p.ProjectRelativePath)),
+			fmt.Sprintf("imgrefs-%s", util.PathToSafeName(p.ProjectRelativePath)),
 		},
-		Commands: []Command{
+		Commands: []task.Command{
 			{Command: `
 set -euo pipefail
 
