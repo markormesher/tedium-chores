@@ -9,6 +9,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const CircleCiFilePath = ".circleci/config.yml"
+
 type CircleConfig struct {
 	Version   string                     `yaml:"version"`
 	Jobs      map[string]CirlceJobConfig `yaml:"jobs"`

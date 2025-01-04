@@ -8,6 +8,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const DroneFilePath = ".drone.yml"
+
 type DroneConfig struct {
 	Kind     string              `yaml:"kind"`
 	Type     string              `yaml:"type"`
