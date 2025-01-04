@@ -1,6 +1,7 @@
 package util
 
 import (
+	"os"
 	"regexp"
 	"slices"
 )
@@ -25,4 +26,29 @@ func MatchingStrings(candidates []string, patterns []regexp.Regexp) []string {
 		}
 	}
 	return matches
+}
+
+func FileExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == os.ErrNotExist {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func DirExists(path string) (bool, error) {
+	stat, err := os.Stat(path)
+	if err == os.ErrNotExist {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+
+	if !stat.IsDir() {
+		return false, nil
+	}
+
+	return true, nil
 }

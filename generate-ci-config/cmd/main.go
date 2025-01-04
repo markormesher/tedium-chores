@@ -42,26 +42,24 @@ func main() {
 
 	projectPath = strings.TrimRight(projectPath, "/")
 
-	stat, err := os.Stat(projectPath)
+	projectPathExists, err := util.DirExists(projectPath)
 	if err != nil {
-		l.Error("Error stating project path", "error", err)
+		l.Error("error checking whether project path exists", "error", err)
 		os.Exit(1)
 	}
 
-	if !stat.IsDir() {
-		l.Error("Project path doesn't exist or isn't a directory")
+	if !projectPathExists {
+		l.Error("project path does not exist", "path", projectPath)
 		os.Exit(1)
 	}
 
 	if ciType == "auto" {
-		cloneUrl := os.Getenv("TEDIUM_REPO_CLONE_URL")
-		switch {
-		case strings.Contains(cloneUrl, "github.com"):
-			ciType = "circle"
-		case strings.Contains(cloneUrl, "gitea"):
+		if droneFileExists, _ := util.FileExists(path.Join(projectPath, configs.DroneFilePath)); droneFileExists {
 			ciType = "drone"
-		default:
-			l.Error("Unable to determine CI type automatically", "cloneUrl", cloneUrl)
+		} else if circleFileExists, _ := util.FileExists(path.Join(projectPath, configs.CircleCiFilePath)); circleFileExists {
+			ciType = "circle"
+		} else {
+			l.Error("unable to determine CI type automatically")
 			os.Exit(1)
 		}
 	}
@@ -75,9 +73,9 @@ func main() {
 	outputPath := ""
 	switch ciType {
 	case "drone":
-		outputPath = path.Join(projectPath, ".drone.yml")
+		outputPath = path.Join(projectPath, configs.DroneFilePath)
 	case "circle":
-		outputPath = path.Join(projectPath, ".circleci/config.yml")
+		outputPath = path.Join(projectPath, configs.CircleCiFilePath)
 	}
 
 	// read taskfile
