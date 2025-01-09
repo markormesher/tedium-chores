@@ -421,22 +421,26 @@ tasks:
     dir: '{{.ROOT_DIR}}/generate-ci-config'
     cmds:
       - cmd: |-
-          lint_diff=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
-          if [[ ! -z "$lint_diff" ]]; then
-            echo "Lint errors:"
-            echo "$lint_diff"
+          fmt_diff=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
+          if [[ ! -z "$fmt_diff" ]]; then
+            echo "Format lint errors:"
+            echo "$fmt_diff"
             exit 1
           fi
+
+          go vet $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/)
   lint-go-generate-taskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     cmds:
       - cmd: |-
-          lint_diff=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
-          if [[ ! -z "$lint_diff" ]]; then
-            echo "Lint errors:"
-            echo "$lint_diff"
+          fmt_diff=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
+          if [[ ! -z "$fmt_diff" ]]; then
+            echo "Format lint errors:"
+            echo "$fmt_diff"
             exit 1
           fi
+
+          go vet $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/)
   lintfix:
     cmds:
       - task: lintfix-go-generate-ci-config
