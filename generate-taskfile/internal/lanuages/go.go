@@ -74,12 +74,15 @@ func (p *GoProject) addLintTask(taskFile *task.TaskFile) error {
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []task.Command{
-			{Command: `lint_diff=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
-if [[ ! -z "$lint_diff" ]]; then
-  echo "Lint errors:"
-  echo "$lint_diff"
+			{Command: `fmt_diff=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
+if [[ ! -z "$fmt_diff" ]]; then
+  echo "Format errors:"
+  echo "$fmt_diff"
   exit 1
-fi`},
+fi
+
+go vet $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/)
+`},
 		},
 	}
 
