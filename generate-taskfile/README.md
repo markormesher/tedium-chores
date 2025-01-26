@@ -40,6 +40,8 @@ The nested task structure is generally **per-type -> per-language -> per-project
     - _per-project tasks_
   - `lintfix-js`
     - _per-project tasks_
+  - `lintfix-proto`
+    - _per-project tasks_
 - `test`
   - `test-go`
     - _per-project tasks_
