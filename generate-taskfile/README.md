@@ -11,9 +11,10 @@ The nested task structure is generally **per-type -> per-language -> per-project
 ## Supported Languages / Tools
 
 - [Buf](https://buf.build)
-- Go
 - Container images (via `Containerfile` or `Dockerfile`)
 - JavaScript (incl. TypeScript)
+- Go
+- [sqlc](https://sqlc.dev/)
 
 ## Supported Tasks
 
@@ -24,6 +25,8 @@ The nested task structure is generally **per-type -> per-language -> per-project
     - _per-project tasks_
 - `gen` _(code generation)_
   - `gen-buf`
+    - _per-project tasks_
+  - `gen-sqlc`
     - _per-project tasks_
 - `lint`
   - `lint-buf`
@@ -36,6 +39,8 @@ The nested task structure is generally **per-type -> per-language -> per-project
   - `lintfix-go`
     - _per-project tasks_
   - `lintfix-js`
+    - _per-project tasks_
+  - `lintfix-proto`
     - _per-project tasks_
 - `test`
   - `test-go`

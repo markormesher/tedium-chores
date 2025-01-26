@@ -56,6 +56,7 @@ func main() {
 		lanuages.FindContainerImageProjects,
 		lanuages.FindGoProjects,
 		lanuages.FindJsProjects,
+		lanuages.FindSQLCProjects,
 	}
 
 	for _, finder := range projectFinders {
