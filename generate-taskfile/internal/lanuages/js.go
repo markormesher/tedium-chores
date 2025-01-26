@@ -15,22 +15,22 @@ import (
 
 var l = logging.Logger
 
-type JsProject struct {
+type JSProject struct {
 	ProjectRelativePath string
 	PackageManagerCmd   string
-	Config              PackageJson
+	Config              PackageJSON
 }
 
-type PackageJson struct {
+type PackageJSON struct {
 	// partial representation
 	Scripts        map[string]string `json:"scripts"`
 	PackageManager string            `json:"packageManager"`
 }
 
-func FindJsProjects(projectPath string) ([]Project, error) {
+func FindJSProjects(projectPath string) ([]Project, error) {
 	output := []Project{}
 
-	packageJsonPaths, err := util.Find(
+	packageJSONPaths, err := util.Find(
 		projectPath,
 		util.FIND_FILES,
 		[]*regexp.Regexp{
@@ -45,13 +45,13 @@ func FindJsProjects(projectPath string) ([]Project, error) {
 		return nil, fmt.Errorf("error searching for JS/TS projects: %w", err)
 	}
 
-	for _, p := range packageJsonPaths {
+	for _, p := range packageJSONPaths {
 		contents, err := os.ReadFile(path.Join(projectPath, p))
 		if err != nil {
 			return nil, fmt.Errorf("error reading package.json: %w", err)
 		}
 
-		var config PackageJson
+		var config PackageJSON
 		err = json.Unmarshal(contents, &config)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing package.json: %w", err)
@@ -72,7 +72,7 @@ func FindJsProjects(projectPath string) ([]Project, error) {
 			continue
 		}
 
-		output = append(output, &JsProject{
+		output = append(output, &JSProject{
 			ProjectRelativePath: path.Dir(p),
 			PackageManagerCmd:   packageManagerCmd,
 			Config:              config,
@@ -82,7 +82,7 @@ func FindJsProjects(projectPath string) ([]Project, error) {
 	return output, nil
 }
 
-func (p *JsProject) AddTasks(taskFile *task.TaskFile) error {
+func (p *JSProject) AddTasks(taskFile *task.TaskFile) error {
 	adders := []TaskAdder{
 		p.addDepsTask,
 		p.addLintTask,
@@ -100,7 +100,7 @@ func (p *JsProject) AddTasks(taskFile *task.TaskFile) error {
 	return nil
 }
 
-func (p *JsProject) addDepsTask(taskFile *task.TaskFile) error {
+func (p *JSProject) addDepsTask(taskFile *task.TaskFile) error {
 	cmd := ""
 
 	switch p.PackageManagerCmd {
@@ -126,7 +126,7 @@ func (p *JsProject) addDepsTask(taskFile *task.TaskFile) error {
 	return nil
 }
 
-func (p *JsProject) addLintTask(taskFile *task.TaskFile) error {
+func (p *JSProject) addLintTask(taskFile *task.TaskFile) error {
 	if _, ok := p.Config.Scripts["lint"]; !ok {
 		return nil
 	}
@@ -142,7 +142,7 @@ func (p *JsProject) addLintTask(taskFile *task.TaskFile) error {
 	return nil
 }
 
-func (p *JsProject) addLintFixTask(taskFile *task.TaskFile) error {
+func (p *JSProject) addLintFixTask(taskFile *task.TaskFile) error {
 	if _, ok := p.Config.Scripts["lintfix"]; !ok {
 		return nil
 	}
@@ -158,7 +158,7 @@ func (p *JsProject) addLintFixTask(taskFile *task.TaskFile) error {
 	return nil
 }
 
-func (p *JsProject) addTestTask(taskFile *task.TaskFile) error {
+func (p *JSProject) addTestTask(taskFile *task.TaskFile) error {
 	if _, ok := p.Config.Scripts["test"]; !ok {
 		return nil
 	}
