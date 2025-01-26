@@ -29,6 +29,7 @@ type ImageSet struct {
 	goStepImage        string
 	imgStepImage       string
 	jsStepImage        string
+	sqlcStepImage      string
 	utilStepImage      string
 }
 
@@ -107,7 +108,7 @@ func main() {
 			l.Warn("Error reading existing Drone config - continuing without it", "error", err)
 		}
 		if droneConfig != nil {
-			imageSet = extractImagesFromDroneCircle(*droneConfig)
+			imageSet = extractImagesFromDroneConfig(*droneConfig)
 		}
 
 	case "circle":
@@ -374,12 +375,14 @@ func getImageForLanguageTask(imageSet ImageSet, taskName string) (string, error)
 		return imageSet.goStepImage, nil
 	case "js":
 		return imageSet.jsStepImage, nil
+	case "sqlc":
+		return imageSet.sqlcStepImage, nil
 	default:
 		return "", fmt.Errorf("unsupported language '%s'", lang)
 	}
 }
 
-func extractImagesFromDroneCircle(config configs.DroneConfig) ImageSet {
+func extractImagesFromDroneConfig(config configs.DroneConfig) ImageSet {
 	output := ImageSet{}
 
 	for _, step := range config.Steps {
@@ -397,6 +400,8 @@ func extractImagesFromDroneCircle(config configs.DroneConfig) ImageSet {
 			output.jsStepImage = image
 		case strings.Contains(image, "podman"):
 			output.imgStepImage = image
+		case strings.Contains(image, "sqlc"):
+			output.sqlcStepImage = image
 		case strings.Contains(image, "task-fetcher"):
 			output.fetchTaskStepImage = image
 		}
@@ -426,6 +431,8 @@ func extractImagesFromCircleConfig(config configs.CircleConfig) ImageSet {
 			output.goStepImage = image
 		case strings.Contains(image, "node"):
 			output.jsStepImage = image
+		case strings.Contains(image, "sqlc"):
+			output.sqlcStepImage = image
 		case strings.Contains(image, "task-fetcher"):
 			output.fetchTaskStepImage = image
 		}
@@ -463,6 +470,10 @@ func (s *ImageSet) populateMissingImages(ciType string) {
 
 	if s.jsStepImage == "" {
 		s.jsStepImage = "docker.io/node:23.5.0-slim"
+	}
+
+	if s.sqlcStepImage == "" {
+		s.sqlcStepImage = "docker.io/sqlc/sqlc:1.28.0"
 	}
 
 	if s.utilStepImage == "" {

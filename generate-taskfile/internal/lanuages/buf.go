@@ -42,6 +42,7 @@ func FindBufProjects(projectPath string) ([]Project, error) {
 func (p *BufProject) AddTasks(taskFile *task.TaskFile) error {
 	adders := []TaskAdder{
 		p.addLintTask,
+		p.addLintFixTask,
 		p.addGenTask,
 	}
 
@@ -60,7 +61,20 @@ func (p *BufProject) addLintTask(taskFile *task.TaskFile) error {
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []task.Command{
+			{Command: `buf format --diff --exit-code`},
 			{Command: `buf lint`},
+		},
+	}
+
+	return nil
+}
+
+func (p *BufProject) addLintFixTask(taskFile *task.TaskFile) error {
+	name := fmt.Sprintf("lintfix-buf-%s", util.PathToSafeName(p.ProjectRelativePath))
+	taskFile.Tasks[name] = &task.Task{
+		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Commands: []task.Command{
+			{Command: `buf format --write`},
 		},
 	}
 
