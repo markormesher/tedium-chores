@@ -1,5 +1,5 @@
 module github.com/markormesher/tedium-chores/generate-ci-file
 
-go 1.23.6
+go 1.24.0
 
 require gopkg.in/yaml.v3 v3.0.1
