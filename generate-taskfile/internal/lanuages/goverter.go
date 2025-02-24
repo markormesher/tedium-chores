@@ -1,0 +1,120 @@
+package lanuages
+
+import (
+	"fmt"
+	"maps"
+	"path"
+	"regexp"
+	"slices"
+	"strings"
+
+	"github.com/markormesher/tedium-chores/generate-taskfile/internal/task"
+	"github.com/markormesher/tedium-chores/generate-taskfile/internal/util"
+)
+
+type GoverterProject struct {
+	ProjectRelativePath string
+	GoverterFiles       []string
+}
+
+func FindGoverterProjects(projectPath string) ([]Project, error) {
+	output := []Project{}
+
+	goModPaths, err := util.Find(
+		projectPath,
+		util.FIND_FILES,
+		[]*regexp.Regexp{
+			regexp.MustCompile(`(^|/)go\.mod`),
+		},
+		[]*regexp.Regexp{
+			regexp.MustCompile(`(^|/)\.git/`),
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error searching for Goverter projects: %w", err)
+	}
+
+	for _, p := range goModPaths {
+		goModPath := path.Join(projectPath, p)
+		match, err := util.FileContainsLine(goModPath, "tool github.com/jmattheis/goverter/cmd/goverter")
+		if err != nil {
+			return nil, fmt.Errorf("error searching for Goverter projects: %w", err)
+		}
+
+		if match {
+			relativePath := path.Dir(p)
+			goverterFiles, err := findGoverterProjectFiles(path.Join(projectPath, relativePath))
+			if err != nil {
+				return nil, fmt.Errorf("error searching for Goverter projects: %w", err)
+			}
+
+			if len(goverterFiles) > 0 {
+				output = append(output, &GoverterProject{
+					ProjectRelativePath: relativePath,
+					GoverterFiles:       goverterFiles,
+				})
+			}
+		}
+	}
+
+	return output, nil
+}
+
+func findGoverterProjectFiles(projectPath string) ([]string, error) {
+	goFilePaths, err := util.Find(
+		projectPath,
+		util.FIND_FILES,
+		[]*regexp.Regexp{
+			regexp.MustCompile(`(^|/).*\.go$`),
+		},
+		[]*regexp.Regexp{
+			regexp.MustCompile(`(^|/)\.git/`),
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error searching for Go files within Goverter project: %w", err)
+	}
+
+	out := map[string]struct{}{}
+	for _, filePath := range goFilePaths {
+		match, err := util.FileContainsLine(path.Join(projectPath, filePath), "// goverter:converter")
+		if err != nil {
+			return nil, fmt.Errorf("error checking for Goverter file: %w", err)
+		}
+		if match {
+			outputPath := "./" + path.Dir(filePath)
+			out[outputPath] = struct{}{}
+		}
+	}
+
+	return slices.Collect(maps.Keys(out)), nil
+}
+
+func (p *GoverterProject) AddTasks(taskFile *task.TaskFile) error {
+	adders := []TaskAdder{
+		p.addGenTask,
+	}
+
+	for _, f := range adders {
+		err := f(taskFile)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (p *GoverterProject) addGenTask(taskFile *task.TaskFile) error {
+	name := fmt.Sprintf("gen-goverter-%s", util.PathToSafeName(p.ProjectRelativePath))
+	taskFile.Tasks[name] = &task.Task{
+		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Commands: []task.Command{
+			{
+				Command: fmt.Sprintf("go tool github.com/jmattheis/goverter/cmd/goverter gen %s", strings.Join(p.GoverterFiles, " ")),
+			},
+		},
+	}
+
+	return nil
+}

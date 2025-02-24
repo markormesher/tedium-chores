@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bufio"
 	"io/fs"
 	"os"
 	"regexp"
@@ -65,4 +66,25 @@ func PathToSafeName(path string) string {
 	path = strings.Trim(path, "-")
 
 	return path
+}
+
+func FileContainsLine(path string, line string) (bool, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		if strings.Contains(scanner.Text(), line) {
+			return true, nil
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return false, err
+	}
+
+	return false, nil
 }
