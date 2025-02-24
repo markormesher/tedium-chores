@@ -55,6 +55,7 @@ func main() {
 		lanuages.FindBufProjects,
 		lanuages.FindContainerImageProjects,
 		lanuages.FindGoProjects,
+		lanuages.FindGoverterProjects,
 		lanuages.FindJSProjects,
 		lanuages.FindSQLCProjects,
 	}
