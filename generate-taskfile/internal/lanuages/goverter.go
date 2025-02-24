@@ -6,6 +6,7 @@ import (
 	"path"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/markormesher/tedium-chores/generate-taskfile/internal/task"
@@ -14,7 +15,7 @@ import (
 
 type GoverterProject struct {
 	ProjectRelativePath string
-	GoverterFiles       []string
+	GoverterFilePaths   []string
 }
 
 func FindGoverterProjects(projectPath string) ([]Project, error) {
@@ -50,7 +51,7 @@ func FindGoverterProjects(projectPath string) ([]Project, error) {
 			if len(goverterFiles) > 0 {
 				output = append(output, &GoverterProject{
 					ProjectRelativePath: path.Dir(p),
-					GoverterFiles:       goverterFiles,
+					GoverterFilePaths:   goverterFiles,
 				})
 			}
 		}
@@ -106,11 +107,16 @@ func (p *GoverterProject) AddTasks(taskFile *task.TaskFile) error {
 
 func (p *GoverterProject) addGenTask(taskFile *task.TaskFile) error {
 	name := fmt.Sprintf("gen-goverter-%s", util.PathToSafeName(p.ProjectRelativePath))
+	safePaths := make([]string, len(p.GoverterFilePaths))
+	for i, path := range p.GoverterFilePaths {
+		safePaths[i] = strconv.Quote(path)
+	}
+
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []task.Command{
 			{
-				Command: fmt.Sprintf("go tool github.com/jmattheis/goverter/cmd/goverter gen %s", strings.Join(p.GoverterFiles, " ")),
+				Command: fmt.Sprintf("go tool github.com/jmattheis/goverter/cmd/goverter gen %s", strings.Join(safePaths, " ")),
 			},
 		},
 	}
