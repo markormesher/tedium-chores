@@ -68,7 +68,7 @@ func PathToSafeName(path string) string {
 	return path
 }
 
-func FileContainsLine(path string, line string) (bool, error) {
+func FileContains(path string, line string) (bool, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return false, err

@@ -36,7 +36,7 @@ func FindGoverterProjects(projectPath string) ([]Project, error) {
 
 	for _, p := range goModPaths {
 		goModPath := path.Join(projectPath, p)
-		match, err := util.FileContainsLine(goModPath, "tool github.com/jmattheis/goverter/cmd/goverter")
+		match, err := util.FileContains(goModPath, "tool github.com/jmattheis/goverter/cmd/goverter")
 		if err != nil {
 			return nil, fmt.Errorf("error searching for Goverter projects: %w", err)
 		}
@@ -77,7 +77,7 @@ func findGoverterProjectFiles(projectPath string) ([]string, error) {
 
 	out := map[string]struct{}{}
 	for _, filePath := range goFilePaths {
-		match, err := util.FileContainsLine(path.Join(projectPath, filePath), "// goverter:converter")
+		match, err := util.FileContains(path.Join(projectPath, filePath), "// goverter:converter")
 		if err != nil {
 			return nil, fmt.Errorf("error checking for Goverter file: %w", err)
 		}
