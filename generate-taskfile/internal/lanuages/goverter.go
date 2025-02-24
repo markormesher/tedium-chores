@@ -42,15 +42,14 @@ func FindGoverterProjects(projectPath string) ([]Project, error) {
 		}
 
 		if match {
-			relativePath := path.Dir(p)
-			goverterFiles, err := findGoverterProjectFiles(path.Join(projectPath, relativePath))
+			goverterFiles, err := findGoverterProjectFiles(path.Dir(goModPath))
 			if err != nil {
 				return nil, fmt.Errorf("error searching for Goverter projects: %w", err)
 			}
 
 			if len(goverterFiles) > 0 {
 				output = append(output, &GoverterProject{
-					ProjectRelativePath: relativePath,
+					ProjectRelativePath: path.Dir(p),
 					GoverterFiles:       goverterFiles,
 				})
 			}
