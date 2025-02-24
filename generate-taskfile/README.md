@@ -12,9 +12,9 @@ The nested task structure is generally **per-type -> per-language -> per-project
 
 - [Buf](https://buf.build)
 - Container images (via `Containerfile` or `Dockerfile`)
-- JavaScript (incl. TypeScript)
 - Go
 - [Goverter](https://github.com/jmattheis/goverter)
+- JavaScript (incl. TypeScript)
 - [sqlc](https://sqlc.dev)
 
 ## Supported Tasks
