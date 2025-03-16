@@ -21,8 +21,8 @@ func FindContainerImageProjects(projectPath string) ([]Project, error) {
 		projectPath,
 		util.FIND_FILES,
 		[]*regexp.Regexp{
-			regexp.MustCompile(`(^|/)Dockerfile`),
-			regexp.MustCompile(`(^|/)Containerfile`),
+			regexp.MustCompile(`(^|/)Dockerfile$`),
+			regexp.MustCompile(`(^|/)Containerfile$`),
 		},
 		[]*regexp.Regexp{
 			regexp.MustCompile(`(^|/)\.git/`),
