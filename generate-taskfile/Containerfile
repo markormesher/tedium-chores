@@ -17,7 +17,7 @@ WORKDIR /app
 LABEL image.registry=ghcr.io
 LABEL image.name=markormesher/tedium-chore-generate-taskfile
 
-COPY --from=docker.io/busybox:1.37.0-glibc@sha256:75ad89b4d27ba9abc38d495d4a89969b97ad47fd25b2f8eb959901dad09289f7 /bin/sh /bin/sh
+COPY --from=docker.io/busybox:1.37.0-glibc@sha256:45fb3214fa75ede765da7fa85a18a96d0973c26d84dac49b1af23923e627a219 /bin/sh /bin/sh
 
 COPY --from=builder /app/build/main /usr/local/bin/generate-taskfile
 
