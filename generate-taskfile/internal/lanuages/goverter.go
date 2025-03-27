@@ -37,7 +37,7 @@ func FindGoverterProjects(projectPath string) ([]Project, error) {
 
 	for _, p := range goModPaths {
 		goModPath := path.Join(projectPath, p)
-		match, err := util.FileContains(goModPath, "tool github.com/jmattheis/goverter/cmd/goverter")
+		match, err := util.FileContains(goModPath, "github.com/jmattheis/goverter/cmd/goverter")
 		if err != nil {
 			return nil, fmt.Errorf("error searching for Goverter projects: %w", err)
 		}
