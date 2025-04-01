@@ -112,6 +112,9 @@ func (p *GoverterProject) addGenTask(taskFile *task.TaskFile) error {
 		safePaths[i] = strconv.Quote(path)
 	}
 
+	// sort paths to make the output deterministic
+	slices.Sort(safePaths)
+
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []task.Command{
