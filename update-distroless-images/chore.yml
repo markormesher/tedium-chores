@@ -1,0 +1,13 @@
+name: "Update Distroless image"
+description: "This chore updates the [distroless](https://github.com/GoogleContainerTools/distroless) image used in containers."
+steps:
+  - image: "docker.io/debian:bookworm"
+    command: |
+      target_image="static-debian12"
+
+      cd /tedium/repo
+
+      shopt -s globstar
+      for f in **/Containerfile; do
+        sed -i "/^FROM gcr.io\/distroless\/${target_image}/! s/^FROM gcr.io\/distroless\/.*/FROM gcr.io\/distroless\/${target_image}/" "$f"
+      done
