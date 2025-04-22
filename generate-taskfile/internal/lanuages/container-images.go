@@ -154,11 +154,24 @@ set -euo pipefail
 
 ` + p.builderSetup() + `
 
+opts=(
+	-f "` + p.ContainerFileName + `"
+)
+
+# Populate args if a file exists (Podman supports --build-arg-file, but Docker does not)
+if [[ -f argfile.conf ]]; then
+  while read arg; do
+    k=$(cut -d = -f 1 <<<"$arg")
+    v=$(cut -d = -f 2- <<<"$arg")
+    opts+=("--build-arg" "$k=$v")
+  done <<< "$(cat argfile.conf | grep -v '^#' | grep '=')"
+fi
+
 # First build to get visible logs
-$builder build -f ` + p.ContainerFileName + ` .
+$builder build "${opts[@]}" .
 
 # Second (cached) build to get the image ID
-img=$($builder build -q -f ` + p.ContainerFileName + ` .)
+img=$($builder build "${opts[@]}" -q .)
 
 if [[ -f .imgrefs ]]; then
   cat .imgrefs | while read tag; do
