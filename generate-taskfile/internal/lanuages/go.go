@@ -78,33 +78,31 @@ func (p *GoProject) addLintTask(taskFile *task.TaskFile) error {
 exit_code=0
 
 # gofmt
-fmt_diff=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
-if [[ ! -z "$fmt_diff" ]]; then
+result=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
+if [[ ! -z "$result" ]]; then
   echo "## gofmt:"
-  echo "$fmt_diff"
+  echo "$result"
   exit_code=1
 fi
 
 # staticcheck
 if grep staticcheck go.mod >/dev/null; then
-	staticcheck=$(go tool staticcheck -checks inherit,+ST1003,+ST1016 ./... || true)
-
-	if [[ ! -z "$staticcheck" ]]; then
-		echo "## staticcheck:"
-		echo "$staticcheck"
-		exit_code=1
-	fi
+  result=$(go tool staticcheck -checks inherit,+ST1003,+ST1016 ./... || true)
+  if [[ ! -z "$result" ]]; then
+    echo "## staticcheck:"
+    echo "$result"
+    exit_code=1
+  fi
 fi
 
 # errcheck
 if grep errcheck go.mod >/dev/null; then
-	errcheck=$(go tool errcheck -ignoregenerated ./... || true)
-
-	if [[ ! -z "$errcheck" ]]; then
-		echo "## errcheck:"
-		echo "$errcheck"
-		exit_code=1
-	fi
+  result=$(go tool errcheck -ignoregenerated ./... || true)
+  if [[ ! -z "$result" ]]; then
+    echo "## errcheck:"
+    echo "$result"
+    exit_code=1
+  fi
 fi
 
 exit $exit_code
