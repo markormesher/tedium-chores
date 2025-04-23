@@ -1,0 +1,6 @@
+name: "Manage Go lint tools"
+conventionalType: "build"
+description: "This chore manages the set of Go linter tools installed on projects that support it."
+steps:
+  - image: "ghcr.io/markormesher/tedium-chore-manage-go-lint-tools:v0"
+    command: "/usr/local/bin/manage-go-lint-tools.sh"

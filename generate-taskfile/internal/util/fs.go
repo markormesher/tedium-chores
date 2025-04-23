@@ -19,7 +19,7 @@ func Find(projectPath string, targets int, patterns []*regexp.Regexp, excludePat
 	matches := make([]string, 0)
 
 	projectFs := os.DirFS(projectPath)
-	fs.WalkDir(projectFs, ".", func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(projectFs, ".", func(path string, d fs.DirEntry, err error) error {
 		relativePath := strings.TrimPrefix(path, projectPath)
 		match := false
 
@@ -50,6 +50,10 @@ func Find(projectPath string, targets int, patterns []*regexp.Regexp, excludePat
 		return nil
 	})
 
+	if err != nil {
+		return nil, err
+	}
+
 	return matches, nil
 }
 
@@ -73,7 +77,9 @@ func FileContains(path string, line string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
