@@ -27,7 +27,7 @@ tasks:
       - task: imgbuild-apply-branch-protection
       - task: imgbuild-generate-ci-config
       - task: imgbuild-generate-taskfile
-      - task: imgbuild-manage-go-lint-tools
+      - task: imgbuild-manage-go-tools
   imgbuild-apply:
     cmds:
       - task: imgbuild-apply-branch-protection
@@ -169,11 +169,11 @@ tasks:
           fi
   imgbuild-manage:
     cmds:
-      - task: imgbuild-manage-go-lint-tools
-  imgbuild-manage-go-lint-tools:
-    dir: '{{.ROOT_DIR}}/manage-go-lint-tools'
+      - task: imgbuild-manage-go-tools
+  imgbuild-manage-go-tools:
+    dir: '{{.ROOT_DIR}}/manage-go-tools'
     deps:
-      - imgrefs-manage-go-lint-tools
+      - imgrefs-manage-go-tools
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -219,7 +219,7 @@ tasks:
       - task: imgpush-apply-branch-protection
       - task: imgpush-generate-ci-config
       - task: imgpush-generate-taskfile
-      - task: imgpush-manage-go-lint-tools
+      - task: imgpush-manage-go-tools
   imgpush-apply:
     cmds:
       - task: imgpush-apply-branch-protection
@@ -313,11 +313,11 @@ tasks:
           fi
   imgpush-manage:
     cmds:
-      - task: imgpush-manage-go-lint-tools
-  imgpush-manage-go-lint-tools:
-    dir: '{{.ROOT_DIR}}/manage-go-lint-tools'
+      - task: imgpush-manage-go-tools
+  imgpush-manage-go-tools:
+    dir: '{{.ROOT_DIR}}/manage-go-tools'
     deps:
-      - imgrefs-manage-go-lint-tools
+      - imgrefs-manage-go-tools
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -347,7 +347,7 @@ tasks:
       - task: imgrefs-apply-branch-protection
       - task: imgrefs-generate-ci-config
       - task: imgrefs-generate-taskfile
-      - task: imgrefs-manage-go-lint-tools
+      - task: imgrefs-manage-go-tools
   imgrefs-apply:
     cmds:
       - task: imgrefs-apply-branch-protection
@@ -531,9 +531,9 @@ tasks:
           cat .imgrefs | grep "." || echo "None"
   imgrefs-manage:
     cmds:
-      - task: imgrefs-manage-go-lint-tools
-  imgrefs-manage-go-lint-tools:
-    dir: '{{.ROOT_DIR}}/manage-go-lint-tools'
+      - task: imgrefs-manage-go-tools
+  imgrefs-manage-go-tools:
+    dir: '{{.ROOT_DIR}}/manage-go-tools'
     cmds:
       - cmd: |-
           set -euo pipefail
