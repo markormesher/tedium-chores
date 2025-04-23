@@ -213,12 +213,30 @@ func main() {
 			}
 
 			commands := make([]string, 0)
+
+			// add runtime dependencies
+			runtimePackages := os.Getenv(fmt.Sprintf("%s_RUNTIME_PACKAGES", strings.ToUpper(lang)))
+			if runtimePackages != "" {
+				commands = append(commands, fmt.Sprintf(`apt update && apt install -y --no-install-recommends %s`, runtimePackages))
+			}
+
+			// add runtime environment
+			runtimeEnvPrefix := fmt.Sprintf("%s_RUNTIME_ENV_", strings.ToUpper(lang))
+			for _, env := range os.Environ() {
+				envPair := strings.SplitN(env, "=", 2)
+				if strings.HasPrefix(envPair[0], runtimeEnvPrefix) {
+					commands = append(commands, fmt.Sprintf(`export %s="%s"`, strings.TrimPrefix(envPair[0], runtimeEnvPrefix), envPair[1]))
+				}
+			}
+
+			// add language-specific setup steps
 			switch lang {
 			case "go":
 				commands = append(commands, `export GOPATH=$(pwd)/.go`)
 			case "js":
 				commands = append(commands, `corepack enable`)
 			}
+
 			commands = append(commands, fmt.Sprintf("./task %s", name))
 
 			steps = append(steps, &configs.GenericCiStep{
