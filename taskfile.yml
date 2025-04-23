@@ -8,32 +8,30 @@ includes:
 tasks:
   deps:
     cmds:
-      - task: deps-go-generate-ci-config
-      - task: deps-go-generate-taskfile
+      - task: deps-go-generateciconfig
+      - task: deps-go-generatetaskfile
   deps-go:
     cmds:
-      - task: deps-go-generate-ci-config
-      - task: deps-go-generate-taskfile
-  deps-go-generate-ci-config:
+      - task: deps-go-generateciconfig
+      - task: deps-go-generatetaskfile
+  deps-go-generateciconfig:
     dir: '{{.ROOT_DIR}}/generate-ci-config'
     cmds:
       - cmd: go mod tidy && go mod download --json
-  deps-go-generate-taskfile:
+  deps-go-generatetaskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     cmds:
       - cmd: go mod tidy && go mod download --json
   imgbuild:
     cmds:
-      - task: imgbuild-apply-branch-protection
-      - task: imgbuild-generate-ci-config
-      - task: imgbuild-generate-taskfile
-  imgbuild-apply:
-    cmds:
-      - task: imgbuild-apply-branch-protection
-  imgbuild-apply-branch-protection:
+      - task: imgbuild-applybranchprotection
+      - task: imgbuild-generateciconfig
+      - task: imgbuild-generatetaskfile
+      - task: imgbuild-managegotools
+  imgbuild-applybranchprotection:
     dir: '{{.ROOT_DIR}}/apply-branch-protection'
     deps:
-      - imgrefs-apply-branch-protection
+      - imgrefs-applybranchprotection
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -74,14 +72,10 @@ tasks:
               echo "Tagged ${tag}"
             done
           fi
-  imgbuild-generate:
-    cmds:
-      - task: imgbuild-generate-ci-config
-      - task: imgbuild-generate-taskfile
-  imgbuild-generate-ci-config:
+  imgbuild-generateciconfig:
     dir: '{{.ROOT_DIR}}/generate-ci-config'
     deps:
-      - imgrefs-generate-ci-config
+      - imgrefs-generateciconfig
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -122,10 +116,54 @@ tasks:
               echo "Tagged ${tag}"
             done
           fi
-  imgbuild-generate-taskfile:
+  imgbuild-generatetaskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     deps:
-      - imgrefs-generate-taskfile
+      - imgrefs-generatetaskfile
+    cmds:
+      - cmd: |-
+          set -euo pipefail
+
+          if command -v podman >/dev/null 2>&1; then
+            # Podman for building locally or in Tatsu CI
+            builder=podman
+          elif command -v docker >/dev/null 2>&1; then
+            # Docker for building in Circle CI
+            builder=docker
+          else
+            echo "Cannot find Podman or Docker" >&2
+            exit 1
+          fi
+
+          opts=(
+          	-f "Containerfile"
+          )
+
+          # Populate args if a file exists (Podman supports --build-arg-file, but Docker does not)
+          if [[ -f argfile.conf ]]; then
+            while read arg; do
+              k=$(cut -d = -f 1 <<<"$arg")
+              v=$(cut -d = -f 2- <<<"$arg")
+              opts+=("--build-arg" "$k=$v")
+            done <<< "$(cat argfile.conf | grep -v '^#' | grep '=')"
+          fi
+
+          # First build to get visible logs
+          $builder build "${opts[@]}" .
+
+          # Second (cached) build to get the image ID
+          img=$($builder build "${opts[@]}" -q .)
+
+          if [[ -f .imgrefs ]]; then
+            cat .imgrefs | while read tag; do
+              $builder tag "$img" "${tag}"
+              echo "Tagged ${tag}"
+            done
+          fi
+  imgbuild-managegotools:
+    dir: '{{.ROOT_DIR}}/manage-go-tools'
+    deps:
+      - imgrefs-managegotools
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -168,16 +206,14 @@ tasks:
           fi
   imgpush:
     cmds:
-      - task: imgpush-apply-branch-protection
-      - task: imgpush-generate-ci-config
-      - task: imgpush-generate-taskfile
-  imgpush-apply:
-    cmds:
-      - task: imgpush-apply-branch-protection
-  imgpush-apply-branch-protection:
+      - task: imgpush-applybranchprotection
+      - task: imgpush-generateciconfig
+      - task: imgpush-generatetaskfile
+      - task: imgpush-managegotools
+  imgpush-applybranchprotection:
     dir: '{{.ROOT_DIR}}/apply-branch-protection'
     deps:
-      - imgrefs-apply-branch-protection
+      - imgrefs-applybranchprotection
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -202,14 +238,10 @@ tasks:
             echo "No .imgrefs file - nothing will be pushed"
             exit 1
           fi
-  imgpush-generate:
-    cmds:
-      - task: imgpush-generate-ci-config
-      - task: imgpush-generate-taskfile
-  imgpush-generate-ci-config:
+  imgpush-generateciconfig:
     dir: '{{.ROOT_DIR}}/generate-ci-config'
     deps:
-      - imgrefs-generate-ci-config
+      - imgrefs-generateciconfig
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -234,10 +266,38 @@ tasks:
             echo "No .imgrefs file - nothing will be pushed"
             exit 1
           fi
-  imgpush-generate-taskfile:
+  imgpush-generatetaskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     deps:
-      - imgrefs-generate-taskfile
+      - imgrefs-generatetaskfile
+    cmds:
+      - cmd: |-
+          set -euo pipefail
+
+          if command -v podman >/dev/null 2>&1; then
+            # Podman for building locally or in Tatsu CI
+            builder=podman
+          elif command -v docker >/dev/null 2>&1; then
+            # Docker for building in Circle CI
+            builder=docker
+          else
+            echo "Cannot find Podman or Docker" >&2
+            exit 1
+          fi
+
+          if [[ -f .imgrefs ]]; then
+            cat .imgrefs | (grep -v "^localhost" || :) | while read tag; do
+              $builder push "${tag}"
+              echo "Pushed ${tag}"
+            done
+          else
+            echo "No .imgrefs file - nothing will be pushed"
+            exit 1
+          fi
+  imgpush-managegotools:
+    dir: '{{.ROOT_DIR}}/manage-go-tools'
+    deps:
+      - imgrefs-managegotools
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -264,13 +324,11 @@ tasks:
           fi
   imgrefs:
     cmds:
-      - task: imgrefs-apply-branch-protection
-      - task: imgrefs-generate-ci-config
-      - task: imgrefs-generate-taskfile
-  imgrefs-apply:
-    cmds:
-      - task: imgrefs-apply-branch-protection
-  imgrefs-apply-branch-protection:
+      - task: imgrefs-applybranchprotection
+      - task: imgrefs-generateciconfig
+      - task: imgrefs-generatetaskfile
+      - task: imgrefs-managegotools
+  imgrefs-applybranchprotection:
     dir: '{{.ROOT_DIR}}/apply-branch-protection'
     cmds:
       - cmd: |-
@@ -328,11 +386,7 @@ tasks:
 
           echo "Image refs:"
           cat .imgrefs | grep "." || echo "None"
-  imgrefs-generate:
-    cmds:
-      - task: imgrefs-generate-ci-config
-      - task: imgrefs-generate-taskfile
-  imgrefs-generate-ci-config:
+  imgrefs-generateciconfig:
     dir: '{{.ROOT_DIR}}/generate-ci-config'
     cmds:
       - cmd: |-
@@ -390,8 +444,66 @@ tasks:
 
           echo "Image refs:"
           cat .imgrefs | grep "." || echo "None"
-  imgrefs-generate-taskfile:
+  imgrefs-generatetaskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
+    cmds:
+      - cmd: |-
+          set -euo pipefail
+
+          if [[ -f .imgrefs ]] && [[ ${CI+y} == "y" ]]; then
+            echo "Skipping re-computing tags"
+            exit 0
+          fi
+
+          if ! command -v git >/dev/null 2>&1; then
+            echo "Cannot find git" >&2
+            exit 1
+          fi
+
+          if ! git describe --tags >/dev/null 2>&1; then
+            echo "No git tags to descibe" >&2
+            exit 1
+          fi
+
+          if ! grep ".imgrefs" .gitignore >/dev/null 2>&1; then
+            echo ".gitignore must include .imgrefs to use the image builder tasks" >&2
+            exit 1
+          fi
+
+          img_name=$( (grep "LABEL image.name=" Containerfile || echo) | head -n 1 | cut -d '=' -f 2-)
+          img_registry=$( (grep "LABEL image.registry=" Containerfile || echo) | head -n 1 | cut -d '=' -f 2-)
+
+          version=$(git describe --tags)
+          is_exact_tag=$(git describe --tags --exact-match >/dev/null 2>&1 && echo y || echo n)
+          major_version=$(echo "${version}" | cut -d '.' -f 1)
+          latest_version_overall=$(git tag -l | sort -r -V | head -n 1)
+          latest_version_within_major=$(git tag -l | grep "^${major_version}" | sort -r -V | head -n 1)
+
+          echo -n "" > .imgrefs
+
+          if [[ ! -z "$img_name" ]]; then
+            echo "localhost/${img_name}" >> .imgrefs
+            echo "localhost/${img_name}:${version}" >> .imgrefs
+
+            if [[ ! -z "$img_registry" ]] && [[ ${CI+y} == "y" ]]; then
+              echo "${img_registry}/${img_name}:${version}" >> .imgrefs
+
+              if [[ "${is_exact_tag}" == "y" ]] && [[ "${version}" == "${latest_version_within_major}" ]]; then
+                echo "${img_registry}/${img_name}:${major_version}" >> .imgrefs
+              fi
+
+              if [[ "${is_exact_tag}" == "y" ]] && [[ "${version}" == "${latest_version_overall}" ]]; then
+                echo "${img_registry}/${img_name}:latest" >> .imgrefs
+              fi
+            fi
+          else
+            echo "Warning: no image name label; image will not be tagged" >&2
+          fi
+
+          echo "Image refs:"
+          cat .imgrefs | grep "." || echo "None"
+  imgrefs-managegotools:
+    dir: '{{.ROOT_DIR}}/manage-go-tools'
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -450,45 +562,95 @@ tasks:
           cat .imgrefs | grep "." || echo "None"
   lint:
     cmds:
-      - task: lint-go-generate-ci-config
-      - task: lint-go-generate-taskfile
+      - task: lint-go-generateciconfig
+      - task: lint-go-generatetaskfile
   lint-go:
     cmds:
-      - task: lint-go-generate-ci-config
-      - task: lint-go-generate-taskfile
-  lint-go-generate-ci-config:
+      - task: lint-go-generateciconfig
+      - task: lint-go-generatetaskfile
+  lint-go-generateciconfig:
     dir: '{{.ROOT_DIR}}/generate-ci-config'
     cmds:
       - cmd: |-
-          fmt_diff=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
-          if [[ ! -z "$fmt_diff" ]]; then
-            echo "Format errors:"
-            echo "$fmt_diff"
-            exit 1
+          exit_code=0
+
+          # gofmt
+          result=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
+          if [[ ! -z "$result" ]]; then
+            echo "## gofmt:"
+            echo "$result"
+            exit_code=1
           fi
-  lint-go-generate-taskfile:
+
+          # staticcheck
+          if grep staticcheck go.mod >/dev/null; then
+            result=$(go tool staticcheck -checks inherit,+ST1003,+ST1016 ./... || true)
+            if [[ ! -z "$result" ]]; then
+              echo "## staticcheck:"
+              echo "$result"
+              exit_code=1
+            fi
+          fi
+
+          # errcheck
+          if grep errcheck go.mod >/dev/null; then
+            result=$(go tool errcheck -ignoregenerated ./... || true)
+            if [[ ! -z "$result" ]]; then
+              echo "## errcheck:"
+              echo "$result"
+              exit_code=1
+            fi
+          fi
+
+          exit $exit_code
+  lint-go-generatetaskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     cmds:
       - cmd: |-
-          fmt_diff=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
-          if [[ ! -z "$fmt_diff" ]]; then
-            echo "Format errors:"
-            echo "$fmt_diff"
-            exit 1
+          exit_code=0
+
+          # gofmt
+          result=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
+          if [[ ! -z "$result" ]]; then
+            echo "## gofmt:"
+            echo "$result"
+            exit_code=1
           fi
+
+          # staticcheck
+          if grep staticcheck go.mod >/dev/null; then
+            result=$(go tool staticcheck -checks inherit,+ST1003,+ST1016 ./... || true)
+            if [[ ! -z "$result" ]]; then
+              echo "## staticcheck:"
+              echo "$result"
+              exit_code=1
+            fi
+          fi
+
+          # errcheck
+          if grep errcheck go.mod >/dev/null; then
+            result=$(go tool errcheck -ignoregenerated ./... || true)
+            if [[ ! -z "$result" ]]; then
+              echo "## errcheck:"
+              echo "$result"
+              exit_code=1
+            fi
+          fi
+
+          exit $exit_code
   lintfix:
     cmds:
-      - task: lintfix-go-generate-ci-config
-      - task: lintfix-go-generate-taskfile
+      - task: lintfix-go-generateciconfig
+      - task: lintfix-go-generatetaskfile
   lintfix-go:
     cmds:
-      - task: lintfix-go-generate-ci-config
-      - task: lintfix-go-generate-taskfile
-  lintfix-go-generate-ci-config:
+      - task: lintfix-go-generateciconfig
+      - task: lintfix-go-generatetaskfile
+  lintfix-go-generateciconfig:
     dir: '{{.ROOT_DIR}}/generate-ci-config'
     cmds:
       - cmd: gofmt -s -w .
-  lintfix-go-generate-taskfile:
+  lintfix-go-generatetaskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     cmds:
       - cmd: gofmt -s -w .

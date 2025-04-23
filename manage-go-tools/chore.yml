@@ -1,0 +1,6 @@
+name: "Manage Go tools"
+conventionalType: "build"
+description: "This chore manages the set of Go tools installed on projects that support it."
+steps:
+  - image: "ghcr.io/markormesher/tedium-chore-manage-go-tools:v0"
+    command: "/usr/local/bin/manage-go-tools.sh"

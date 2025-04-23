@@ -75,12 +75,37 @@ func (p *GoProject) addLintTask(taskFile *task.TaskFile) error {
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
 		Commands: []task.Command{
 			{Command: `
-fmt_diff=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
-if [[ ! -z "$fmt_diff" ]]; then
-  echo "Format errors:"
-  echo "$fmt_diff"
-  exit 1
+exit_code=0
+
+# gofmt
+result=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
+if [[ ! -z "$result" ]]; then
+  echo "## gofmt:"
+  echo "$result"
+  exit_code=1
 fi
+
+# staticcheck
+if grep staticcheck go.mod >/dev/null; then
+  result=$(go tool staticcheck -checks inherit,+ST1003,+ST1016 ./... || true)
+  if [[ ! -z "$result" ]]; then
+    echo "## staticcheck:"
+    echo "$result"
+    exit_code=1
+  fi
+fi
+
+# errcheck
+if grep errcheck go.mod >/dev/null; then
+  result=$(go tool errcheck -ignoregenerated ./... || true)
+  if [[ ! -z "$result" ]]; then
+    echo "## errcheck:"
+    echo "$result"
+    exit_code=1
+  fi
+fi
+
+exit $exit_code
 `},
 		},
 	}

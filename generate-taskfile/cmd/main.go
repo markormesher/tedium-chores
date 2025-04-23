@@ -151,7 +151,9 @@ func main() {
 	outputPath := path.Join(projectPath, "taskfile.yml")
 	outputFile, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	handleWriteError(err)
-	defer outputFile.Close()
+	defer func() {
+		_ = outputFile.Close()
+	}()
 
 	_, err = outputFile.WriteString("# This file is maintained by Tedium - manual edits will be overwritten!\n\n")
 	handleWriteError(err)
