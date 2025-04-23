@@ -30,10 +30,12 @@ for gomod in "$project"/**/go.mod; do
     # install tools
     if ! go tool | grep "staticcheck" >/dev/null; then
       go get -tool honnef.co/go/tools/cmd/staticcheck@latest
+      go mod tidy
     fi
 
     if ! go tool | grep "errcheck" >/dev/null; then
       go get -tool github.com/kisielk/errcheck@latest
+      go mod tidy
     fi
   )
 done
