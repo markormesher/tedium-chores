@@ -8,33 +8,30 @@ includes:
 tasks:
   deps:
     cmds:
-      - task: deps-go-generate-ci-config
-      - task: deps-go-generate-taskfile
+      - task: deps-go-generateciconfig
+      - task: deps-go-generatetaskfile
   deps-go:
     cmds:
-      - task: deps-go-generate-ci-config
-      - task: deps-go-generate-taskfile
-  deps-go-generate-ci-config:
+      - task: deps-go-generateciconfig
+      - task: deps-go-generatetaskfile
+  deps-go-generateciconfig:
     dir: '{{.ROOT_DIR}}/generate-ci-config'
     cmds:
       - cmd: go mod tidy && go mod download --json
-  deps-go-generate-taskfile:
+  deps-go-generatetaskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     cmds:
       - cmd: go mod tidy && go mod download --json
   imgbuild:
     cmds:
-      - task: imgbuild-apply-branch-protection
-      - task: imgbuild-generate-ci-config
-      - task: imgbuild-generate-taskfile
-      - task: imgbuild-manage-go-tools
-  imgbuild-apply:
-    cmds:
-      - task: imgbuild-apply-branch-protection
-  imgbuild-apply-branch-protection:
+      - task: imgbuild-applybranchprotection
+      - task: imgbuild-generateciconfig
+      - task: imgbuild-generatetaskfile
+      - task: imgbuild-managegotools
+  imgbuild-applybranchprotection:
     dir: '{{.ROOT_DIR}}/apply-branch-protection'
     deps:
-      - imgrefs-apply-branch-protection
+      - imgrefs-applybranchprotection
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -75,14 +72,10 @@ tasks:
               echo "Tagged ${tag}"
             done
           fi
-  imgbuild-generate:
-    cmds:
-      - task: imgbuild-generate-ci-config
-      - task: imgbuild-generate-taskfile
-  imgbuild-generate-ci-config:
+  imgbuild-generateciconfig:
     dir: '{{.ROOT_DIR}}/generate-ci-config'
     deps:
-      - imgrefs-generate-ci-config
+      - imgrefs-generateciconfig
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -123,10 +116,10 @@ tasks:
               echo "Tagged ${tag}"
             done
           fi
-  imgbuild-generate-taskfile:
+  imgbuild-generatetaskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     deps:
-      - imgrefs-generate-taskfile
+      - imgrefs-generatetaskfile
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -167,13 +160,10 @@ tasks:
               echo "Tagged ${tag}"
             done
           fi
-  imgbuild-manage:
-    cmds:
-      - task: imgbuild-manage-go-tools
-  imgbuild-manage-go-tools:
+  imgbuild-managegotools:
     dir: '{{.ROOT_DIR}}/manage-go-tools'
     deps:
-      - imgrefs-manage-go-tools
+      - imgrefs-managegotools
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -216,17 +206,14 @@ tasks:
           fi
   imgpush:
     cmds:
-      - task: imgpush-apply-branch-protection
-      - task: imgpush-generate-ci-config
-      - task: imgpush-generate-taskfile
-      - task: imgpush-manage-go-tools
-  imgpush-apply:
-    cmds:
-      - task: imgpush-apply-branch-protection
-  imgpush-apply-branch-protection:
+      - task: imgpush-applybranchprotection
+      - task: imgpush-generateciconfig
+      - task: imgpush-generatetaskfile
+      - task: imgpush-managegotools
+  imgpush-applybranchprotection:
     dir: '{{.ROOT_DIR}}/apply-branch-protection'
     deps:
-      - imgrefs-apply-branch-protection
+      - imgrefs-applybranchprotection
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -251,14 +238,10 @@ tasks:
             echo "No .imgrefs file - nothing will be pushed"
             exit 1
           fi
-  imgpush-generate:
-    cmds:
-      - task: imgpush-generate-ci-config
-      - task: imgpush-generate-taskfile
-  imgpush-generate-ci-config:
+  imgpush-generateciconfig:
     dir: '{{.ROOT_DIR}}/generate-ci-config'
     deps:
-      - imgrefs-generate-ci-config
+      - imgrefs-generateciconfig
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -283,10 +266,10 @@ tasks:
             echo "No .imgrefs file - nothing will be pushed"
             exit 1
           fi
-  imgpush-generate-taskfile:
+  imgpush-generatetaskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     deps:
-      - imgrefs-generate-taskfile
+      - imgrefs-generatetaskfile
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -311,13 +294,10 @@ tasks:
             echo "No .imgrefs file - nothing will be pushed"
             exit 1
           fi
-  imgpush-manage:
-    cmds:
-      - task: imgpush-manage-go-tools
-  imgpush-manage-go-tools:
+  imgpush-managegotools:
     dir: '{{.ROOT_DIR}}/manage-go-tools'
     deps:
-      - imgrefs-manage-go-tools
+      - imgrefs-managegotools
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -344,14 +324,11 @@ tasks:
           fi
   imgrefs:
     cmds:
-      - task: imgrefs-apply-branch-protection
-      - task: imgrefs-generate-ci-config
-      - task: imgrefs-generate-taskfile
-      - task: imgrefs-manage-go-tools
-  imgrefs-apply:
-    cmds:
-      - task: imgrefs-apply-branch-protection
-  imgrefs-apply-branch-protection:
+      - task: imgrefs-applybranchprotection
+      - task: imgrefs-generateciconfig
+      - task: imgrefs-generatetaskfile
+      - task: imgrefs-managegotools
+  imgrefs-applybranchprotection:
     dir: '{{.ROOT_DIR}}/apply-branch-protection'
     cmds:
       - cmd: |-
@@ -409,11 +386,7 @@ tasks:
 
           echo "Image refs:"
           cat .imgrefs | grep "." || echo "None"
-  imgrefs-generate:
-    cmds:
-      - task: imgrefs-generate-ci-config
-      - task: imgrefs-generate-taskfile
-  imgrefs-generate-ci-config:
+  imgrefs-generateciconfig:
     dir: '{{.ROOT_DIR}}/generate-ci-config'
     cmds:
       - cmd: |-
@@ -471,7 +444,7 @@ tasks:
 
           echo "Image refs:"
           cat .imgrefs | grep "." || echo "None"
-  imgrefs-generate-taskfile:
+  imgrefs-generatetaskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     cmds:
       - cmd: |-
@@ -529,10 +502,7 @@ tasks:
 
           echo "Image refs:"
           cat .imgrefs | grep "." || echo "None"
-  imgrefs-manage:
-    cmds:
-      - task: imgrefs-manage-go-tools
-  imgrefs-manage-go-tools:
+  imgrefs-managegotools:
     dir: '{{.ROOT_DIR}}/manage-go-tools'
     cmds:
       - cmd: |-
@@ -592,13 +562,13 @@ tasks:
           cat .imgrefs | grep "." || echo "None"
   lint:
     cmds:
-      - task: lint-go-generate-ci-config
-      - task: lint-go-generate-taskfile
+      - task: lint-go-generateciconfig
+      - task: lint-go-generatetaskfile
   lint-go:
     cmds:
-      - task: lint-go-generate-ci-config
-      - task: lint-go-generate-taskfile
-  lint-go-generate-ci-config:
+      - task: lint-go-generateciconfig
+      - task: lint-go-generatetaskfile
+  lint-go-generateciconfig:
     dir: '{{.ROOT_DIR}}/generate-ci-config'
     cmds:
       - cmd: |-
@@ -633,7 +603,7 @@ tasks:
           fi
 
           exit $exit_code
-  lint-go-generate-taskfile:
+  lint-go-generatetaskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     cmds:
       - cmd: |-
@@ -670,17 +640,17 @@ tasks:
           exit $exit_code
   lintfix:
     cmds:
-      - task: lintfix-go-generate-ci-config
-      - task: lintfix-go-generate-taskfile
+      - task: lintfix-go-generateciconfig
+      - task: lintfix-go-generatetaskfile
   lintfix-go:
     cmds:
-      - task: lintfix-go-generate-ci-config
-      - task: lintfix-go-generate-taskfile
-  lintfix-go-generate-ci-config:
+      - task: lintfix-go-generateciconfig
+      - task: lintfix-go-generatetaskfile
+  lintfix-go-generateciconfig:
     dir: '{{.ROOT_DIR}}/generate-ci-config'
     cmds:
       - cmd: gofmt -s -w .
-  lintfix-go-generate-taskfile:
+  lintfix-go-generatetaskfile:
     dir: '{{.ROOT_DIR}}/generate-taskfile'
     cmds:
       - cmd: gofmt -s -w .

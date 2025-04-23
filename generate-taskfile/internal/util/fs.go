@@ -62,12 +62,8 @@ func PathToSafeName(path string) string {
 		return "root"
 	}
 
-	illegalChars := regexp.MustCompile(`[^a-zA-Z0-9_\-]+`)
-	multipleDashes := regexp.MustCompile(`\-+`)
-
-	path = illegalChars.ReplaceAllString(path, "-")
-	path = multipleDashes.ReplaceAllString(path, "-")
-	path = strings.Trim(path, "-")
+	illegalChars := regexp.MustCompile(`[^a-zA-Z0-9]+`)
+	path = illegalChars.ReplaceAllString(path, "")
 
 	return path
 }
