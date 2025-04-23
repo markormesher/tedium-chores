@@ -12,7 +12,7 @@ if [[ ! -d "$project" ]]; then
   exit 1
 fi
 
-shopt -s globstar
+shopt -s globstar nullglob
 for gomod in "$project"/**/go.mod; do
   gomod_dir=$(dirname "$gomod")
   (
