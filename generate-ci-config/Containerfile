@@ -17,7 +17,7 @@ WORKDIR /app
 LABEL image.registry=ghcr.io
 LABEL image.name=markormesher/tedium-chore-generate-ci-config
 
-COPY --from=docker.io/busybox:1.37.0-glibc@sha256:45fb3214fa75ede765da7fa85a18a96d0973c26d84dac49b1af23923e627a219 /bin/sh /bin/sh
+COPY --from=docker.io/busybox:1.37.0-glibc@sha256:47ac99f1ae0afb8d83d8cd8aac5461be8103cac932f2631b5acce9122236adb1 /bin/sh /bin/sh
 
 COPY --from=builder /app/build/main /usr/local/bin/generate-ci-config
 
