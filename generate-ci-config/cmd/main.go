@@ -209,6 +209,7 @@ func main() {
 	}
 
 	if slices.Contains(taskNames, "deps-js") {
+		// circle's save-cache step doesn't support globs, so we have to build this path ourselves
 		cachePaths := []string{
 			"/usr/local/lib/node_modules",
 		}
