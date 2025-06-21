@@ -1,6 +1,0 @@
-name: "Generate Taskfile"
-conventionalType: "build"
-description: "This chore populates a [Taskfile](https://taskfile.dev) based on the contents of the repo."
-steps:
-  - image: "ghcr.io/markormesher/tedium-chore-generate-taskfile:v0"
-    command: "/usr/local/bin/generate-taskfile"

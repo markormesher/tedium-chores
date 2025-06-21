@@ -1,0 +1,6 @@
+name: "Generate Tasks & CI Config"
+conventionalType: "build"
+description: "This chore generates [Taskfile](https://taskfile.dev) and CI (either Drone or CircleCI) configs based on the contents of the repo."
+steps:
+  - image: "ghcr.io/markormesher/tedium-chore-generate-tasks-and-ci:v0"
+    command: "/usr/local/bin/main"

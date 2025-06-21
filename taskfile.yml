@@ -9,45 +9,30 @@ tasks:
   cachekey:
     cmds:
       - cmd: rm -f "{{.ROOT_DIR}}/.task-meta-cachekey"*
-      - task: cachekey-go-generateciconfig
-      - task: cachekey-go-generatetaskfile
+      - task: cachekey-go-generatetasksandci
   cachekey-go:
     cmds:
-      - task: cachekey-go-generateciconfig
-      - task: cachekey-go-generatetaskfile
-  cachekey-go-generateciconfig:
-    dir: '{{.ROOT_DIR}}/generate-ci-config'
-    cmds:
-      - cmd: sha256sum go.mod | awk '{print $1}' >> "{{.ROOT_DIR}}/.task-meta-cachekey-go"
-      - cmd: if [[ -f go.sum ]]; then sha256sum go.sum | awk '{print $1}' >> "{{.ROOT_DIR}}/.task-meta-cachekey-go"; fi
-  cachekey-go-generatetaskfile:
-    dir: '{{.ROOT_DIR}}/generate-taskfile'
+      - task: cachekey-go-generatetasksandci
+  cachekey-go-generatetasksandci:
+    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
     cmds:
       - cmd: sha256sum go.mod | awk '{print $1}' >> "{{.ROOT_DIR}}/.task-meta-cachekey-go"
       - cmd: if [[ -f go.sum ]]; then sha256sum go.sum | awk '{print $1}' >> "{{.ROOT_DIR}}/.task-meta-cachekey-go"; fi
   deps:
     cmds:
-      - task: deps-go-generateciconfig
-      - task: deps-go-generatetaskfile
+      - task: deps-go-generatetasksandci
   deps-go:
     cmds:
-      - task: deps-go-generateciconfig
-      - task: deps-go-generatetaskfile
-  deps-go-generateciconfig:
-    dir: '{{.ROOT_DIR}}/generate-ci-config'
-    cmds:
-      - cmd: go mod tidy && go mod download --json
-      - cmd: (go tool || true) | (grep '\.' || true) | while read t; do go build -o /dev/null $t; done
-  deps-go-generatetaskfile:
-    dir: '{{.ROOT_DIR}}/generate-taskfile'
+      - task: deps-go-generatetasksandci
+  deps-go-generatetasksandci:
+    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
     cmds:
       - cmd: go mod tidy && go mod download --json
       - cmd: (go tool || true) | (grep '\.' || true) | while read t; do go build -o /dev/null $t; done
   imgbuild:
     cmds:
       - task: imgbuild-applybranchprotection
-      - task: imgbuild-generateciconfig
-      - task: imgbuild-generatetaskfile
+      - task: imgbuild-generatetasksandci
       - task: imgbuild-managegotools
   imgbuild-applybranchprotection:
     dir: '{{.ROOT_DIR}}/apply-branch-protection'
@@ -93,54 +78,10 @@ tasks:
               echo "Tagged ${tag}"
             done
           fi
-  imgbuild-generateciconfig:
-    dir: '{{.ROOT_DIR}}/generate-ci-config'
+  imgbuild-generatetasksandci:
+    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
     deps:
-      - imgrefs-generateciconfig
-    cmds:
-      - cmd: |-
-          set -euo pipefail
-
-          if command -v podman >/dev/null 2>&1; then
-            # Podman for building locally or in Tatsu CI
-            builder=podman
-          elif command -v docker >/dev/null 2>&1; then
-            # Docker for building in Circle CI
-            builder=docker
-          else
-            echo "Cannot find Podman or Docker" >&2
-            exit 1
-          fi
-
-          opts=(
-          	-f "Containerfile"
-          )
-
-          # Populate args if a file exists (Podman supports --build-arg-file, but Docker does not)
-          if [[ -f argfile.conf ]]; then
-            while read arg; do
-              k=$(cut -d = -f 1 <<<"$arg")
-              v=$(cut -d = -f 2- <<<"$arg")
-              opts+=("--build-arg" "$k=$v")
-            done <<< "$(cat argfile.conf | grep -v '^#' | grep '=')"
-          fi
-
-          # First build to get visible logs
-          $builder build "${opts[@]}" .
-
-          # Second (cached) build to get the image ID
-          img=$($builder build "${opts[@]}" -q .)
-
-          if [[ -f .task-meta-imgrefs ]]; then
-            cat .task-meta-imgrefs | while read tag; do
-              $builder tag "$img" "${tag}"
-              echo "Tagged ${tag}"
-            done
-          fi
-  imgbuild-generatetaskfile:
-    dir: '{{.ROOT_DIR}}/generate-taskfile'
-    deps:
-      - imgrefs-generatetaskfile
+      - imgrefs-generatetasksandci
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -228,8 +169,7 @@ tasks:
   imgpush:
     cmds:
       - task: imgpush-applybranchprotection
-      - task: imgpush-generateciconfig
-      - task: imgpush-generatetaskfile
+      - task: imgpush-generatetasksandci
       - task: imgpush-managegotools
   imgpush-applybranchprotection:
     dir: '{{.ROOT_DIR}}/apply-branch-protection'
@@ -259,38 +199,10 @@ tasks:
             echo "No .task-meta-imgrefs file - nothing will be pushed"
             exit 1
           fi
-  imgpush-generateciconfig:
-    dir: '{{.ROOT_DIR}}/generate-ci-config'
+  imgpush-generatetasksandci:
+    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
     deps:
-      - imgrefs-generateciconfig
-    cmds:
-      - cmd: |-
-          set -euo pipefail
-
-          if command -v podman >/dev/null 2>&1; then
-            # Podman for building locally or in Tatsu CI
-            builder=podman
-          elif command -v docker >/dev/null 2>&1; then
-            # Docker for building in Circle CI
-            builder=docker
-          else
-            echo "Cannot find Podman or Docker" >&2
-            exit 1
-          fi
-
-          if [[ -f .task-meta-imgrefs ]]; then
-            cat .task-meta-imgrefs | (grep -v "^localhost" || :) | while read tag; do
-              $builder push "${tag}"
-              echo "Pushed ${tag}"
-            done
-          else
-            echo "No .task-meta-imgrefs file - nothing will be pushed"
-            exit 1
-          fi
-  imgpush-generatetaskfile:
-    dir: '{{.ROOT_DIR}}/generate-taskfile'
-    deps:
-      - imgrefs-generatetaskfile
+      - imgrefs-generatetasksandci
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -346,8 +258,7 @@ tasks:
   imgrefs:
     cmds:
       - task: imgrefs-applybranchprotection
-      - task: imgrefs-generateciconfig
-      - task: imgrefs-generatetaskfile
+      - task: imgrefs-generatetasksandci
       - task: imgrefs-managegotools
   imgrefs-applybranchprotection:
     dir: '{{.ROOT_DIR}}/apply-branch-protection'
@@ -407,66 +318,8 @@ tasks:
 
           echo "Image refs:"
           cat .task-meta-imgrefs | grep "." || echo "None"
-  imgrefs-generateciconfig:
-    dir: '{{.ROOT_DIR}}/generate-ci-config'
-    cmds:
-      - cmd: |-
-          set -euo pipefail
-
-          if [[ -f .task-meta-imgrefs ]] && [[ ${CI+y} == "y" ]]; then
-            echo "Skipping re-computing tags"
-            exit 0
-          fi
-
-          if ! command -v git >/dev/null 2>&1; then
-            echo "Cannot find git" >&2
-            exit 1
-          fi
-
-          if ! git describe --tags >/dev/null 2>&1; then
-            echo "No git tags to descibe" >&2
-            exit 1
-          fi
-
-          if ! grep ".task-meta-*" .gitignore >/dev/null 2>&1; then
-            echo ".gitignore must include .task-meta-* to use the image builder tasks" >&2
-            exit 1
-          fi
-
-          img_name=$( (grep "LABEL image.name=" Containerfile || echo) | tail -n 1 | cut -d '=' -f 2-)
-          img_registry=$( (grep "LABEL image.registry=" Containerfile || echo) | tail -n 1 | cut -d '=' -f 2-)
-
-          version=$(git describe --tags)
-          is_exact_tag=$(git describe --tags --exact-match >/dev/null 2>&1 && echo y || echo n)
-          major_version=$(echo "${version}" | cut -d '.' -f 1)
-          latest_version_overall=$(git tag -l | sort -V | tail -n 1)
-          latest_version_within_major=$(git tag -l | grep "^${major_version}" | sort -V | tail -n 1)
-
-          echo -n "" > .task-meta-imgrefs
-
-          if [[ ! -z "$img_name" ]]; then
-            echo "localhost/${img_name}" >> .task-meta-imgrefs
-            echo "localhost/${img_name}:${version}" >> .task-meta-imgrefs
-
-            if [[ ! -z "$img_registry" ]] && [[ ${CI+y} == "y" ]]; then
-              echo "${img_registry}/${img_name}:${version}" >> .task-meta-imgrefs
-
-              if [[ "${is_exact_tag}" == "y" ]] && [[ "${version}" == "${latest_version_within_major}" ]]; then
-                echo "${img_registry}/${img_name}:${major_version}" >> .task-meta-imgrefs
-              fi
-
-              if [[ "${is_exact_tag}" == "y" ]] && [[ "${version}" == "${latest_version_overall}" ]]; then
-                echo "${img_registry}/${img_name}:latest" >> .task-meta-imgrefs
-              fi
-            fi
-          else
-            echo "Warning: no image name label; image will not be tagged" >&2
-          fi
-
-          echo "Image refs:"
-          cat .task-meta-imgrefs | grep "." || echo "None"
-  imgrefs-generatetaskfile:
-    dir: '{{.ROOT_DIR}}/generate-taskfile'
+  imgrefs-generatetasksandci:
+    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -583,49 +436,12 @@ tasks:
           cat .task-meta-imgrefs | grep "." || echo "None"
   lint:
     cmds:
-      - task: lint-go-generateciconfig
-      - task: lint-go-generatetaskfile
+      - task: lint-go-generatetasksandci
   lint-go:
     cmds:
-      - task: lint-go-generateciconfig
-      - task: lint-go-generatetaskfile
-  lint-go-generateciconfig:
-    dir: '{{.ROOT_DIR}}/generate-ci-config'
-    cmds:
-      - cmd: |-
-          exit_code=0
-
-          # gofmt
-          result=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
-          if [[ ! -z "$result" ]]; then
-            echo "## gofmt:"
-            echo "$result"
-            exit_code=1
-          fi
-
-          # staticcheck
-          if grep staticcheck go.mod >/dev/null; then
-            result=$(go tool staticcheck -checks inherit,+ST1003,+ST1016 ./... || true)
-            if [[ ! -z "$result" ]]; then
-              echo "## staticcheck:"
-              echo "$result"
-              exit_code=1
-            fi
-          fi
-
-          # errcheck
-          if grep errcheck go.mod >/dev/null; then
-            result=$(go tool errcheck -ignoregenerated ./... || true)
-            if [[ ! -z "$result" ]]; then
-              echo "## errcheck:"
-              echo "$result"
-              exit_code=1
-            fi
-          fi
-
-          exit $exit_code
-  lint-go-generatetaskfile:
-    dir: '{{.ROOT_DIR}}/generate-taskfile'
+      - task: lint-go-generatetasksandci
+  lint-go-generatetasksandci:
+    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
     cmds:
       - cmd: |-
           exit_code=0
@@ -661,17 +477,11 @@ tasks:
           exit $exit_code
   lintfix:
     cmds:
-      - task: lintfix-go-generateciconfig
-      - task: lintfix-go-generatetaskfile
+      - task: lintfix-go-generatetasksandci
   lintfix-go:
     cmds:
-      - task: lintfix-go-generateciconfig
-      - task: lintfix-go-generatetaskfile
-  lintfix-go-generateciconfig:
-    dir: '{{.ROOT_DIR}}/generate-ci-config'
-    cmds:
-      - cmd: gofmt -s -w .
-  lintfix-go-generatetaskfile:
-    dir: '{{.ROOT_DIR}}/generate-taskfile'
+      - task: lintfix-go-generatetasksandci
+  lintfix-go-generatetasksandci:
+    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
     cmds:
       - cmd: gofmt -s -w .
