@@ -184,13 +184,13 @@ func main() {
 		steps = append(steps, &configs.GenericCiStep{
 			Name:  "deps-go",
 			Image: imageSet.goStepImage,
-			Commands: []string{
-				`export GOPATH=/.go`,
-				`./task deps-go`,
-			},
 			CacheRestoreKeys: []string{
 				`deps-go-{{ checksum ".task-meta-cachekey-go" }}`,
 				`deps-go-`,
+			},
+			Commands: []string{
+				`export GOPATH=/.go`,
+				`./task deps-go`,
 			},
 			CacheSaveKey: `deps-go-{{ checksum ".task-meta-cachekey-go" }}`,
 			CacheSavePaths: []string{
@@ -208,11 +208,16 @@ func main() {
 		steps = append(steps, &configs.GenericCiStep{
 			Name:  "deps-js",
 			Image: imageSet.jsStepImage,
+			CacheRestoreKeys: []string{
+				`deps-js-{{ checksum ".task-meta-cachekey-js" }}`,
+				`deps-js-`,
+			},
 			Commands: []string{
 				`corepack enable`,
 				`./task deps-js`,
 			},
-			WorkspacePersistPaths: []string{
+			CacheSaveKey: `deps-js-{{ checksum ".task-meta-cachekey-js" }}`,
+			CacheSavePaths: []string{
 				"./node_modules",
 				"./**/node_modules",
 			},
