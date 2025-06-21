@@ -102,14 +102,14 @@ if ! grep ".imgrefs" .gitignore >/dev/null 2>&1; then
   exit 1
 fi
 
-img_name=$( (grep "LABEL image.name=" ` + p.ContainerFileName + ` || echo) | head -n 1 | cut -d '=' -f 2-)
-img_registry=$( (grep "LABEL image.registry=" ` + p.ContainerFileName + ` || echo) | head -n 1 | cut -d '=' -f 2-)
+img_name=$( (grep "LABEL image.name=" ` + p.ContainerFileName + ` || echo) | tail -n 1 | cut -d '=' -f 2-)
+img_registry=$( (grep "LABEL image.registry=" ` + p.ContainerFileName + ` || echo) | tail -n 1 | cut -d '=' -f 2-)
 
 version=$(git describe --tags)
 is_exact_tag=$(git describe --tags --exact-match >/dev/null 2>&1 && echo y || echo n)
 major_version=$(echo "${version}" | cut -d '.' -f 1)
-latest_version_overall=$(git tag -l | sort -r -V | head -n 1)
-latest_version_within_major=$(git tag -l | grep "^${major_version}" | sort -r -V | head -n 1)
+latest_version_overall=$(git tag -l | sort -V | tail -n 1)
+latest_version_within_major=$(git tag -l | grep "^${major_version}" | sort -V | tail -n 1)
 
 echo -n "" > .imgrefs
 
