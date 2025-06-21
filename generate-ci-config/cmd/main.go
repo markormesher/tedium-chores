@@ -21,6 +21,8 @@ import (
 var jsonHandler = slog.NewJSONHandler(os.Stdout, nil)
 var l = slog.New(jsonHandler)
 
+const cacheVersion = 3
+
 // ImageSet is a utility type to store the container image references used for various steps.
 type ImageSet struct {
 	bufStepImage       string
@@ -185,14 +187,14 @@ func main() {
 			Name:  "deps-go",
 			Image: imageSet.goStepImage,
 			CacheRestoreKeys: []string{
-				`deps-go-{{ checksum ".task-meta-cachekey-go" }}`,
-				`deps-go-`,
+				fmt.Sprintf(`deps-go-v%d-{{ checksum ".task-meta-cachekey-go" }}`, cacheVersion),
+				fmt.Sprintf(`deps-go-v%d-`, cacheVersion),
 			},
 			Commands: []string{
 				`export GOPATH=/.go`,
 				`./task deps-go`,
 			},
-			CacheSaveKey: `deps-go-{{ checksum ".task-meta-cachekey-go" }}`,
+			CacheSaveKey: fmt.Sprintf(`deps-go-v%d-{{ checksum ".task-meta-cachekey-go" }}`, cacheVersion),
 			CacheSavePaths: []string{
 				"/.go",
 			},
@@ -205,22 +207,28 @@ func main() {
 	}
 
 	if slices.Contains(taskNames, "deps-js") {
+		cachePaths := []string{
+			"/usr/local/lib/node_modules",
+		}
+		for _, t := range taskNames {
+			if strings.HasPrefix(t, "deps-js-") {
+				cachePaths = append(cachePaths, strings.ReplaceAll(taskfile.Tasks[t].Directory, "{{.ROOT_DIR}}/", "")+"/node_modules")
+			}
+		}
+
 		steps = append(steps, &configs.GenericCiStep{
 			Name:  "deps-js",
 			Image: imageSet.jsStepImage,
 			CacheRestoreKeys: []string{
-				`deps-js-{{ checksum ".task-meta-cachekey-js" }}`,
-				`deps-js-`,
+				fmt.Sprintf(`deps-js-v%d-{{ checksum ".task-meta-cachekey-js" }}`, cacheVersion),
+				fmt.Sprintf(`deps-js-v%d-`, cacheVersion),
 			},
 			Commands: []string{
 				`corepack enable`,
 				`./task deps-js`,
 			},
-			CacheSaveKey: `deps-js-{{ checksum ".task-meta-cachekey-js" }}`,
-			CacheSavePaths: []string{
-				"./node_modules",
-				"./**/node_modules",
-			},
+			CacheSaveKey:   fmt.Sprintf(`deps-js-v%d-{{ checksum ".task-meta-cachekey-js" }}`, cacheVersion),
+			CacheSavePaths: cachePaths,
 			Dependencies: []regexp.Regexp{
 				*regexp.MustCompile(`checkout`),
 				*regexp.MustCompile(`fetch\-task`),
@@ -271,8 +279,8 @@ func main() {
 				Image:    image,
 				Commands: commands,
 				CacheRestoreKeys: []string{
-					fmt.Sprintf(`deps-%s-{{ checksum ".task-meta-cachekey-%s" }}`, lang, lang),
-					fmt.Sprintf("deps-%s-", lang),
+					fmt.Sprintf(`deps-%s-v%d-{{ checksum ".task-meta-cachekey-%s" }}`, lang, cacheVersion, lang),
+					fmt.Sprintf("deps-%s-v%d-", lang, cacheVersion),
 				},
 				Dependencies: []regexp.Regexp{
 					*regexp.MustCompile(`checkout`),

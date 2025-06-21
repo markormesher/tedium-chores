@@ -15,7 +15,8 @@ type Taskfile struct {
 }
 
 type Task struct {
-	Internal bool `yaml:"internal,omitempty"`
+	Internal  bool   `yaml:"internal"`
+	Directory string `yaml:"dir"`
 }
 
 func LoadTaskFile(path string) (*Taskfile, error) {

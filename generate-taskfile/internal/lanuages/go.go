@@ -41,7 +41,7 @@ func FindGoProjects(projectPath string) ([]Project, error) {
 
 func (p *GoProject) AddTasks(taskFile *task.TaskFile) error {
 	adders := []TaskAdder{
-		p.addCacheKey,
+		p.addCacheKeyTask,
 		p.addDepsTask,
 		p.addLintTask,
 		p.addLintFixTask,
@@ -58,7 +58,7 @@ func (p *GoProject) AddTasks(taskFile *task.TaskFile) error {
 	return nil
 }
 
-func (p *GoProject) addCacheKey(taskFile *task.TaskFile) error {
+func (p *GoProject) addCacheKeyTask(taskFile *task.TaskFile) error {
 	name := fmt.Sprintf("cachekey-go-%s", util.PathToSafeName(p.ProjectRelativePath))
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),

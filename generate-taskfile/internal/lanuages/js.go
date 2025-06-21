@@ -84,6 +84,7 @@ func FindJSProjects(projectPath string) ([]Project, error) {
 
 func (p *JSProject) AddTasks(taskFile *task.TaskFile) error {
 	adders := []TaskAdder{
+		p.addCacheKeyTask,
 		p.addDepsTask,
 		p.addLintTask,
 		p.addLintFixTask,
@@ -95,6 +96,20 @@ func (p *JSProject) AddTasks(taskFile *task.TaskFile) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (p *JSProject) addCacheKeyTask(taskFile *task.TaskFile) error {
+	name := fmt.Sprintf("cachekey-js-%s", util.PathToSafeName(p.ProjectRelativePath))
+	taskFile.Tasks[name] = &task.Task{
+		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Commands: []task.Command{
+			{Command: `sha256sum package.json | awk '{print $1}' >> "{{.ROOT_DIR}}/.task-meta-cachekey-js"`},
+			{Command: `if [[ -f pnpm-lock.yaml ]]; then sha256sum pnpm-lock.yaml | awk '{print $1}' >> "{{.ROOT_DIR}}/.task-meta-cachekey-js"; fi`},
+			{Command: `if [[ -f yarn.lock ]]; then sha256sum yarn.lock | awk '{print $1}' >> "{{.ROOT_DIR}}/.task-meta-cachekey-js"; fi`},
+		},
 	}
 
 	return nil
