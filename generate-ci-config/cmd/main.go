@@ -131,7 +131,7 @@ func main() {
 			Name:           "checkout",
 			Image:          imageSet.utilStepImage,
 			IsCheckoutStep: true,
-			PersistPatterns: []string{
+			WorkspacePersistPaths: []string{
 				".",
 			},
 		})
@@ -143,7 +143,7 @@ func main() {
 		Commands: []string{
 			`cp /task .`,
 		},
-		PersistPatterns: []string{
+		WorkspacePersistPaths: []string{
 			"./task",
 		},
 		Dependencies: []regexp.Regexp{
@@ -152,8 +152,9 @@ func main() {
 	})
 
 	steps = append(steps, &configs.GenericCiStep{
-		Name:  "ci-all",
-		Image: imageSet.utilStepImage,
+		Name:        "ci-all",
+		Image:       imageSet.utilStepImage,
+		NoWorkspace: true,
 		Commands: []string{
 			`echo "Done"`,
 		},
@@ -173,7 +174,7 @@ func main() {
 				`export GOPATH=$(pwd)/.go`,
 				`./task deps-go`,
 			},
-			PersistPatterns: []string{
+			WorkspacePersistPaths: []string{
 				"./.go",
 			},
 			Dependencies: []regexp.Regexp{
@@ -191,7 +192,7 @@ func main() {
 				`corepack enable`,
 				`./task deps-js`,
 			},
-			PersistPatterns: []string{
+			WorkspacePersistPaths: []string{
 				"./node_modules",
 				"./**/node_modules",
 			},
@@ -264,7 +265,7 @@ func main() {
 			Name:     "imgrefs",
 			Image:    imageSet.gitStepImage,
 			Commands: commands,
-			PersistPatterns: []string{
+			WorkspacePersistPaths: []string{
 				"./.imgrefs",
 				"./**/.imgrefs",
 			},

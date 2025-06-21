@@ -105,7 +105,7 @@ func GenerateCircleConfig(steps []*GenericCiStep) CircleConfig {
 					Path: ".",
 				},
 			})
-		} else {
+		} else if !step.NoWorkspace {
 			job.Steps = append(job.Steps, CirlceJobStepConfig{
 				Attach: CircleJobStepAttachConfig{
 					At: ".",
@@ -130,11 +130,11 @@ func GenerateCircleConfig(steps []*GenericCiStep) CircleConfig {
 			})
 		}
 
-		if len(step.PersistPatterns) > 0 {
+		if len(step.WorkspacePersistPaths) > 0 {
 			job.Steps = append(job.Steps, CirlceJobStepConfig{
 				Persist: CircleJobStepPersistConfig{
 					Root:  ".",
-					Paths: step.PersistPatterns,
+					Paths: step.WorkspacePersistPaths,
 				},
 			})
 		}
