@@ -1,4 +1,4 @@
-package ciconfig
+package ci
 
 import (
 	"bytes"

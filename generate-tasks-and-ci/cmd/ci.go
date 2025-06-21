@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/markormesher/tedium-chores/generate-tasks-and-ci/internal/ciconfig"
+	"github.com/markormesher/tedium-chores/generate-tasks-and-ci/internal/ci"
 	"github.com/markormesher/tedium-chores/generate-tasks-and-ci/internal/task"
 	"github.com/markormesher/tedium-chores/generate-tasks-and-ci/internal/util"
 	"gopkg.in/yaml.v3"
@@ -46,9 +46,9 @@ func updateCIConfig(projectPath string, ciType string) {
 	}
 
 	if ciType == "auto" {
-		if droneFileExists, _ := util.FileExists(path.Join(projectPath, ciconfig.DroneFilePath)); droneFileExists {
+		if droneFileExists, _ := util.FileExists(path.Join(projectPath, ci.DroneFilePath)); droneFileExists {
 			ciType = "drone"
-		} else if circleFileExists, _ := util.FileExists(path.Join(projectPath, ciconfig.CircleCiFilePath)); circleFileExists {
+		} else if circleFileExists, _ := util.FileExists(path.Join(projectPath, ci.CircleCiFilePath)); circleFileExists {
 			ciType = "circle"
 		} else {
 			l.Error("unable to determine CI type automatically")
@@ -65,9 +65,9 @@ func updateCIConfig(projectPath string, ciType string) {
 	outputPath := ""
 	switch ciType {
 	case "drone":
-		outputPath = path.Join(projectPath, ciconfig.DroneFilePath)
+		outputPath = path.Join(projectPath, ci.DroneFilePath)
 	case "circle":
-		outputPath = path.Join(projectPath, ciconfig.CircleCiFilePath)
+		outputPath = path.Join(projectPath, ci.CircleCiFilePath)
 	}
 
 	// read taskfile
@@ -94,7 +94,7 @@ func updateCIConfig(projectPath string, ciType string) {
 
 	switch ciType {
 	case "drone":
-		droneConfig, err := ciconfig.LoadDroneConfigIfPresent(outputPath)
+		droneConfig, err := ci.LoadDroneConfigIfPresent(outputPath)
 		if err != nil {
 			l.Warn("Error reading existing Drone config - continuing without it", "error", err)
 		}
@@ -103,7 +103,7 @@ func updateCIConfig(projectPath string, ciType string) {
 		}
 
 	case "circle":
-		circleConfig, err := ciconfig.LoadCircleConfigIfPresent(outputPath)
+		circleConfig, err := ci.LoadCircleConfigIfPresent(outputPath)
 		if err != nil {
 			l.Warn("Error reading existing Circle config - continuing without it", "error", err)
 		}
@@ -115,10 +115,10 @@ func updateCIConfig(projectPath string, ciType string) {
 	imageSet.populateMissingImages(ciType)
 
 	// generate CI steps based on tasks
-	steps := make([]*ciconfig.GenericCiStep, 0)
+	steps := make([]*ci.GenericCiStep, 0)
 
 	if ciType == "circle" {
-		steps = append(steps, &ciconfig.GenericCiStep{
+		steps = append(steps, &ci.GenericCiStep{
 			Name:           "checkout",
 			Image:          imageSet.utilStepImage,
 			IsCheckoutStep: true,
@@ -128,7 +128,7 @@ func updateCIConfig(projectPath string, ciType string) {
 		})
 	}
 
-	steps = append(steps, &ciconfig.GenericCiStep{
+	steps = append(steps, &ci.GenericCiStep{
 		Name:  "fetch-task",
 		Image: imageSet.fetchTaskStepImage,
 		Commands: []string{
@@ -139,7 +139,7 @@ func updateCIConfig(projectPath string, ciType string) {
 		},
 	})
 
-	steps = append(steps, &ciconfig.GenericCiStep{
+	steps = append(steps, &ci.GenericCiStep{
 		Name:        "ci-all",
 		Image:       imageSet.utilStepImage,
 		NoWorkspace: true,
@@ -155,7 +155,7 @@ func updateCIConfig(projectPath string, ciType string) {
 	})
 
 	if slices.Contains(taskNames, "cachekey") {
-		steps = append(steps, &ciconfig.GenericCiStep{
+		steps = append(steps, &ci.GenericCiStep{
 			Name:  "cachekey",
 			Image: imageSet.utilStepImage,
 			Commands: []string{
@@ -172,7 +172,7 @@ func updateCIConfig(projectPath string, ciType string) {
 	}
 
 	if slices.Contains(taskNames, "deps-go") {
-		steps = append(steps, &ciconfig.GenericCiStep{
+		steps = append(steps, &ci.GenericCiStep{
 			Name:  "deps-go",
 			Image: imageSet.goStepImage,
 			CacheRestoreKeys: []string{
@@ -208,7 +208,7 @@ func updateCIConfig(projectPath string, ciType string) {
 			}
 		}
 
-		steps = append(steps, &ciconfig.GenericCiStep{
+		steps = append(steps, &ci.GenericCiStep{
 			Name:  "deps-js",
 			Image: imageSet.jsStepImage,
 			CacheRestoreKeys: []string{
@@ -267,7 +267,7 @@ func updateCIConfig(projectPath string, ciType string) {
 
 			commands = append(commands, fmt.Sprintf("./task %s", name))
 
-			steps = append(steps, &ciconfig.GenericCiStep{
+			steps = append(steps, &ci.GenericCiStep{
 				Name:     name,
 				Image:    image,
 				Commands: commands,
@@ -292,7 +292,7 @@ func updateCIConfig(projectPath string, ciType string) {
 		}
 		commands = append(commands, `./task imgrefs`)
 
-		steps = append(steps, &ciconfig.GenericCiStep{
+		steps = append(steps, &ci.GenericCiStep{
 			Name:     "imgrefs",
 			Image:    imageSet.gitStepImage,
 			Commands: commands,
@@ -314,7 +314,7 @@ func updateCIConfig(projectPath string, ciType string) {
 		commands = append(commands, `./task imgbuild`)
 		commands = append(commands, `./task imgpush`)
 
-		step := ciconfig.GenericCiStep{
+		step := ci.GenericCiStep{
 			Name:     "imgbuild-imgpush",
 			Image:    imageSet.imgStepImage,
 			Commands: commands,
@@ -354,7 +354,7 @@ func updateCIConfig(projectPath string, ciType string) {
 		return cmp.Less(steps[a].Name, steps[b].Name)
 	})
 
-	sortedSteps := make([]*ciconfig.GenericCiStep, 0)
+	sortedSteps := make([]*ci.GenericCiStep, 0)
 	dependenciesMet := make([]string, 0)
 	for len(sortedSteps) < len(steps) {
 		sizeBefore := len(sortedSteps)
@@ -381,9 +381,9 @@ func updateCIConfig(projectPath string, ciType string) {
 	var output any
 	switch ciType {
 	case "drone":
-		output = ciconfig.GenerateDroneConfig(sortedSteps)
+		output = ci.GenerateDroneConfig(sortedSteps)
 	case "circle":
-		output = ciconfig.GenerateCircleConfig(sortedSteps)
+		output = ci.GenerateCircleConfig(sortedSteps)
 	}
 
 	var outputBuffer bytes.Buffer
@@ -434,7 +434,7 @@ func getImageForLanguageTask(imageSet ImageSet, taskName string) (string, error)
 	}
 }
 
-func extractImagesFromDroneConfig(config ciconfig.DroneConfig) ImageSet {
+func extractImagesFromDroneConfig(config ci.DroneConfig) ImageSet {
 	output := ImageSet{}
 
 	for _, step := range config.Steps {
@@ -462,7 +462,7 @@ func extractImagesFromDroneConfig(config ciconfig.DroneConfig) ImageSet {
 	return output
 }
 
-func extractImagesFromCircleConfig(config ciconfig.CircleConfig) ImageSet {
+func extractImagesFromCircleConfig(config ci.CircleConfig) ImageSet {
 	output := ImageSet{}
 
 	for _, job := range config.Jobs {
@@ -494,7 +494,7 @@ func extractImagesFromCircleConfig(config ciconfig.CircleConfig) ImageSet {
 }
 
 func (s *ImageSet) populateMissingImages(ciType string) {
-	// these defaults will slowly get out of date, but they will only be applied to first-time ciconfig and Renovate will update them anyway
+	// these defaults will slowly get out of date, but they will only be applied to first-time ci and Renovate will update them anyway
 
 	if s.bufStepImage == "" {
 		s.bufStepImage = "docker.io/bufbuild/buf:1.48.0"
