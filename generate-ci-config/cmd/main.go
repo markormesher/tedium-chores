@@ -21,6 +21,8 @@ import (
 var jsonHandler = slog.NewJSONHandler(os.Stdout, nil)
 var l = slog.New(jsonHandler)
 
+const cacheVersion = 5
+
 // ImageSet is a utility type to store the container image references used for various steps.
 type ImageSet struct {
 	bufStepImage       string
@@ -131,7 +133,7 @@ func main() {
 			Name:           "checkout",
 			Image:          imageSet.utilStepImage,
 			IsCheckoutStep: true,
-			PersistPatterns: []string{
+			WorkspacePersistPaths: []string{
 				".",
 			},
 		})
@@ -143,17 +145,15 @@ func main() {
 		Commands: []string{
 			`cp /task .`,
 		},
-		PersistPatterns: []string{
+		WorkspacePersistPaths: []string{
 			"./task",
-		},
-		Dependencies: []regexp.Regexp{
-			*regexp.MustCompile(`checkout`),
 		},
 	})
 
 	steps = append(steps, &configs.GenericCiStep{
-		Name:  "ci-all",
-		Image: imageSet.utilStepImage,
+		Name:        "ci-all",
+		Image:       imageSet.utilStepImage,
+		NoWorkspace: true,
 		Commands: []string{
 			`echo "Done"`,
 		},
@@ -165,16 +165,15 @@ func main() {
 		},
 	})
 
-	if slices.Contains(taskNames, "deps-go") {
+	if slices.Contains(taskNames, "cachekey") {
 		steps = append(steps, &configs.GenericCiStep{
-			Name:  "deps-go",
-			Image: imageSet.goStepImage,
+			Name:  "cachekey",
+			Image: imageSet.utilStepImage,
 			Commands: []string{
-				`export GOPATH=$(pwd)/.go`,
-				`./task deps-go`,
+				`./task cachekey`,
 			},
-			PersistPatterns: []string{
-				"./.go",
+			WorkspacePersistPaths: []string{
+				"./.task-meta-cachekey*",
 			},
 			Dependencies: []regexp.Regexp{
 				*regexp.MustCompile(`checkout`),
@@ -183,21 +182,60 @@ func main() {
 		})
 	}
 
-	if slices.Contains(taskNames, "deps-js") {
+	if slices.Contains(taskNames, "deps-go") {
 		steps = append(steps, &configs.GenericCiStep{
-			Name:  "deps-js",
-			Image: imageSet.jsStepImage,
-			Commands: []string{
-				`corepack enable`,
-				`./task deps-js`,
+			Name:  "deps-go",
+			Image: imageSet.goStepImage,
+			CacheRestoreKeys: []string{
+				fmt.Sprintf(`deps-go-v%d-{{ checksum ".task-meta-cachekey-go" }}`, cacheVersion),
+				fmt.Sprintf(`deps-go-v%d-`, cacheVersion),
 			},
-			PersistPatterns: []string{
-				"./node_modules",
-				"./**/node_modules",
+			Commands: []string{
+				`export GOPATH=/.go`,
+				`export GOCACHE=/.gocache`,
+				`./task deps-go`,
+			},
+			CacheSaveKey: fmt.Sprintf(`deps-go-v%d-{{ checksum ".task-meta-cachekey-go" }}`, cacheVersion),
+			CacheSavePaths: []string{
+				"/.go",
+				"/.gocache",
 			},
 			Dependencies: []regexp.Regexp{
 				*regexp.MustCompile(`checkout`),
 				*regexp.MustCompile(`fetch\-task`),
+				*regexp.MustCompile(`cachekey`),
+			},
+		})
+	}
+
+	if slices.Contains(taskNames, "deps-js") {
+		// circle's save-cache step doesn't support globs, so we have to build this path ourselves
+		cachePaths := []string{
+			"/usr/local/lib/node_modules",
+		}
+		for _, t := range taskNames {
+			if strings.HasPrefix(t, "deps-js-") {
+				cachePaths = append(cachePaths, strings.ReplaceAll(taskfile.Tasks[t].Directory, "{{.ROOT_DIR}}/", "")+"/node_modules")
+			}
+		}
+
+		steps = append(steps, &configs.GenericCiStep{
+			Name:  "deps-js",
+			Image: imageSet.jsStepImage,
+			CacheRestoreKeys: []string{
+				fmt.Sprintf(`deps-js-v%d-{{ checksum ".task-meta-cachekey-js" }}`, cacheVersion),
+				fmt.Sprintf(`deps-js-v%d-`, cacheVersion),
+			},
+			Commands: []string{
+				`corepack enable`,
+				`./task deps-js`,
+			},
+			CacheSaveKey:   fmt.Sprintf(`deps-js-v%d-{{ checksum ".task-meta-cachekey-js" }}`, cacheVersion),
+			CacheSavePaths: cachePaths,
+			Dependencies: []regexp.Regexp{
+				*regexp.MustCompile(`checkout`),
+				*regexp.MustCompile(`fetch\-task`),
+				*regexp.MustCompile(`cachekey`),
 			},
 		})
 	}
@@ -232,7 +270,8 @@ func main() {
 			// add language-specific setup steps
 			switch lang {
 			case "go":
-				commands = append(commands, `export GOPATH=$(pwd)/.go`)
+				commands = append(commands, `export GOPATH=/.go`)
+				commands = append(commands, `export GOCACHE=/.gocache`)
 			case "js":
 				commands = append(commands, `corepack enable`)
 			}
@@ -243,6 +282,10 @@ func main() {
 				Name:     name,
 				Image:    image,
 				Commands: commands,
+				CacheRestoreKeys: []string{
+					fmt.Sprintf(`deps-%s-v%d-{{ checksum ".task-meta-cachekey-%s" }}`, lang, cacheVersion, lang),
+					fmt.Sprintf("deps-%s-v%d-", lang, cacheVersion),
+				},
 				Dependencies: []regexp.Regexp{
 					*regexp.MustCompile(`checkout`),
 					*regexp.MustCompile(`fetch\-task`),
@@ -264,9 +307,9 @@ func main() {
 			Name:     "imgrefs",
 			Image:    imageSet.gitStepImage,
 			Commands: commands,
-			PersistPatterns: []string{
-				"./.imgrefs",
-				"./**/.imgrefs",
+			WorkspacePersistPaths: []string{
+				"./.task-meta-imgrefs",
+				"./**/.task-meta-imgrefs",
 			},
 			Dependencies: []regexp.Regexp{
 				*regexp.MustCompile(`checkout`),

@@ -27,11 +27,13 @@ type CircleJobDockerConfig struct {
 }
 
 type CirlceJobStepConfig struct {
-	Checkout    CircleJobStepCheckoutConfig    `yaml:"checkout,omitempty"`
-	Attach      CircleJobStepAttachConfig      `yaml:"attach_workspace,omitempty"`
-	SetupDocker CircleJobStepSetupDockerConfig `yaml:"setup_remote_docker,omitempty"`
-	Run         CircleJobStepRunConfig         `yaml:"run,omitempty"`
-	Persist     CircleJobStepPersistConfig     `yaml:"persist_to_workspace,omitempty"`
+	Checkout     CircleJobStepCheckoutConfig     `yaml:"checkout,omitempty"`
+	Attach       CircleJobStepAttachConfig       `yaml:"attach_workspace,omitempty"`
+	SetupDocker  CircleJobStepSetupDockerConfig  `yaml:"setup_remote_docker,omitempty"`
+	Run          CircleJobStepRunConfig          `yaml:"run,omitempty"`
+	Persist      CircleJobStepPersistConfig      `yaml:"persist_to_workspace,omitempty"`
+	SaveCache    CircleJobStepSaveCacheConfig    `yaml:"save_cache,omitempty"`
+	RestoreCache CircleJobStepRestoreCacheConfig `yaml:"restore_cache,omitempty"`
 }
 
 type CircleJobStepCheckoutConfig struct {
@@ -54,6 +56,15 @@ type CircleJobStepRunConfig struct {
 type CircleJobStepPersistConfig struct {
 	Root  string   `yaml:"root"`
 	Paths []string `yaml:"paths"`
+}
+
+type CircleJobStepSaveCacheConfig struct {
+	Key   string   `yaml:"key"`
+	Paths []string `yaml:"paths"`
+}
+
+type CircleJobStepRestoreCacheConfig struct {
+	Keys []string `yaml:"keys"`
 }
 
 type CirlceWorkflowsConfig struct {
@@ -105,7 +116,7 @@ func GenerateCircleConfig(steps []*GenericCiStep) CircleConfig {
 					Path: ".",
 				},
 			})
-		} else {
+		} else if !step.NoWorkspace {
 			job.Steps = append(job.Steps, CirlceJobStepConfig{
 				Attach: CircleJobStepAttachConfig{
 					At: ".",
@@ -121,6 +132,14 @@ func GenerateCircleConfig(steps []*GenericCiStep) CircleConfig {
 			})
 		}
 
+		if len(step.CacheRestoreKeys) > 0 {
+			job.Steps = append(job.Steps, CirlceJobStepConfig{
+				RestoreCache: CircleJobStepRestoreCacheConfig{
+					Keys: step.CacheRestoreKeys,
+				},
+			})
+		}
+
 		if len(step.Commands) > 0 {
 			job.Steps = append(job.Steps, CirlceJobStepConfig{
 				Run: CircleJobStepRunConfig{
@@ -130,11 +149,20 @@ func GenerateCircleConfig(steps []*GenericCiStep) CircleConfig {
 			})
 		}
 
-		if len(step.PersistPatterns) > 0 {
+		if len(step.WorkspacePersistPaths) > 0 {
 			job.Steps = append(job.Steps, CirlceJobStepConfig{
 				Persist: CircleJobStepPersistConfig{
 					Root:  ".",
-					Paths: step.PersistPatterns,
+					Paths: step.WorkspacePersistPaths,
+				},
+			})
+		}
+
+		if step.CacheSaveKey != "" {
+			job.Steps = append(job.Steps, CirlceJobStepConfig{
+				SaveCache: CircleJobStepSaveCacheConfig{
+					Key:   step.CacheSaveKey,
+					Paths: step.CacheSavePaths,
 				},
 			})
 		}

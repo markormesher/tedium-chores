@@ -10,7 +10,7 @@ import (
 )
 
 type SQLCProject struct {
-	ProjectRelativePath string
+	RelativePath string
 }
 
 func FindSQLCProjects(projectPath string) ([]Project, error) {
@@ -32,11 +32,15 @@ func FindSQLCProjects(projectPath string) ([]Project, error) {
 
 	for _, p := range sqlcGenPaths {
 		output = append(output, &SQLCProject{
-			ProjectRelativePath: path.Dir(p),
+			RelativePath: path.Dir(p),
 		})
 	}
 
 	return output, nil
+}
+
+func (p *SQLCProject) GetRelativePath() string {
+	return p.RelativePath
 }
 
 func (p *SQLCProject) AddTasks(taskFile *task.TaskFile) error {
@@ -55,9 +59,9 @@ func (p *SQLCProject) AddTasks(taskFile *task.TaskFile) error {
 }
 
 func (p *SQLCProject) addGenTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("gen-sqlc-%s", util.PathToSafeName(p.ProjectRelativePath))
+	name := fmt.Sprintf("gen-sqlc-%s", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
-		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
 			{Command: `sqlc generate`},
 		},

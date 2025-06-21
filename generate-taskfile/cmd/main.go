@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -70,7 +71,13 @@ func main() {
 	}
 
 	for _, p := range allProjects {
-		err := p.AddTasks(&taskFile)
+		err := updateGitignore(path.Join(projectPath, p.GetRelativePath()))
+		if err != nil {
+			l.Error("error updating .gitignore", "error", err)
+			os.Exit(1)
+		}
+
+		err = p.AddTasks(&taskFile)
 		if err != nil {
 			l.Error("error adding tasks", "error", err)
 			os.Exit(1)
@@ -109,6 +116,15 @@ func main() {
 		}
 	}
 
+	// one-off changes for specific tasks
+	for name, t := range taskFile.Tasks {
+		if name == "cachekey" {
+			t.Commands = append([]task.Command{
+				{Command: `rm -f "{{.ROOT_DIR}}/.task-meta-cachekey"*`},
+			}, t.Commands...)
+		}
+	}
+
 	// clean up output
 
 	multipleLineBreaks := regexp.MustCompile(`\n\n+`)
@@ -143,7 +159,7 @@ func main() {
 
 	handleWriteError := func(err error) {
 		if err != nil {
-			l.Error("Error writing to CI config", "error", err)
+			l.Error("Error writing to taskfile", "error", err)
 			os.Exit(1)
 		}
 	}
@@ -160,4 +176,48 @@ func main() {
 
 	_, err = outputFile.Write(outputBuffer.Bytes())
 	handleWriteError(err)
+}
+
+func updateGitignore(projectPath string) error {
+	gitignorePath := path.Join(projectPath, ".gitignore")
+	_, statErr := os.Stat(gitignorePath)
+
+	var contents string
+	if errors.Is(statErr, os.ErrNotExist) {
+		contents = ""
+	} else {
+		contentsRaw, err := os.ReadFile(gitignorePath)
+		if err != nil {
+			return fmt.Errorf("error reading gitignore: %w", err)
+		}
+		contents = string(contentsRaw)
+	}
+
+	lines := strings.Split(contents, "\n")
+	replaced := false
+	seen := false
+	for i, l := range lines {
+		if l == ".imgrefs" {
+			lines[i] = ".task-meta-*"
+			replaced = true
+			break
+		}
+
+		if l == ".task-meta-*" {
+			seen = true
+			break
+		}
+	}
+
+	if !seen && !replaced {
+		lines = append(lines, ".task-meta-*")
+	}
+
+	contents = strings.Join(lines, "\n")
+	err := os.WriteFile(gitignorePath, []byte(contents), 0644)
+	if err != nil {
+		return fmt.Errorf("error writing gitignore: %w", err)
+	}
+
+	return nil
 }

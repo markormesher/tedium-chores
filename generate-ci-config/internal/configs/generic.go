@@ -10,8 +10,12 @@ type GenericCiStep struct {
 	Dependencies         []regexp.Regexp
 	ResolvedDependencies []string
 
-	// used for Circle only
-	IsCheckoutStep  bool
-	NeedsDocker     bool
-	PersistPatterns []string
+	// Circle-only configs
+	IsCheckoutStep        bool
+	WorkspacePersistPaths []string
+	NoWorkspace           bool
+	NeedsDocker           bool
+	CacheRestoreKeys      []string
+	CacheSaveKey          string
+	CacheSavePaths        []string
 }
