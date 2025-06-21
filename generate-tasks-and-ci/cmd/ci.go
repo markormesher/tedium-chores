@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/markormesher/tedium-chores/generate-tasks-and-ci/internal/ciconfig"
+	"github.com/markormesher/tedium-chores/generate-tasks-and-ci/internal/task"
 	"github.com/markormesher/tedium-chores/generate-tasks-and-ci/internal/util"
 	"gopkg.in/yaml.v3"
 )
@@ -71,7 +72,7 @@ func updateCIConfig(projectPath string, ciType string) {
 
 	// read taskfile
 	taskfilePath := path.Join(projectPath, "taskfile.yml")
-	taskfile, err := ciconfig.LoadTaskFile(taskfilePath)
+	taskfile, err := task.LoadTaskFile(taskfilePath)
 	if err != nil {
 		l.Error("error loading Taskfile", "error", err)
 		os.Exit(1)
