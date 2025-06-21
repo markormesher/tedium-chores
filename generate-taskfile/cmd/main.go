@@ -71,14 +71,13 @@ func main() {
 	}
 
 	for _, p := range allProjects {
-		err := p.AddTasks(&taskFile)
-
-		err = updateGitignore(path.Join(projectPath, p.GetRelativePath()))
+		err := updateGitignore(path.Join(projectPath, p.GetRelativePath()))
 		if err != nil {
 			l.Error("error updating .gitignore", "error", err)
 			os.Exit(1)
 		}
 
+		err = p.AddTasks(&taskFile)
 		if err != nil {
 			l.Error("error adding tasks", "error", err)
 			os.Exit(1)
