@@ -21,7 +21,7 @@ import (
 var jsonHandler = slog.NewJSONHandler(os.Stdout, nil)
 var l = slog.New(jsonHandler)
 
-const cacheVersion = 3
+const cacheVersion = 5
 
 // ImageSet is a utility type to store the container image references used for various steps.
 type ImageSet struct {
@@ -192,11 +192,13 @@ func main() {
 			},
 			Commands: []string{
 				`export GOPATH=/.go`,
+				`export GOCACHE=/.gocache`,
 				`./task deps-go`,
 			},
 			CacheSaveKey: fmt.Sprintf(`deps-go-v%d-{{ checksum ".task-meta-cachekey-go" }}`, cacheVersion),
 			CacheSavePaths: []string{
 				"/.go",
+				"/.gocache",
 			},
 			Dependencies: []regexp.Regexp{
 				*regexp.MustCompile(`checkout`),
@@ -268,6 +270,7 @@ func main() {
 			switch lang {
 			case "go":
 				commands = append(commands, `export GOPATH=/.go`)
+				commands = append(commands, `export GOCACHE=/.gocache`)
 			case "js":
 				commands = append(commands, `corepack enable`)
 			}
