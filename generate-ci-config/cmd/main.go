@@ -146,9 +146,6 @@ func main() {
 		WorkspacePersistPaths: []string{
 			"./task",
 		},
-		Dependencies: []regexp.Regexp{
-			*regexp.MustCompile(`checkout`),
-		},
 	})
 
 	steps = append(steps, &configs.GenericCiStep{
@@ -166,20 +163,43 @@ func main() {
 		},
 	})
 
+	if slices.Contains(taskNames, "cachekey") {
+		steps = append(steps, &configs.GenericCiStep{
+			Name:  "cachekey",
+			Image: imageSet.utilStepImage,
+			Commands: []string{
+				`./task cachekey`,
+			},
+			WorkspacePersistPaths: []string{
+				"./.task-meta-cachekey*",
+			},
+			Dependencies: []regexp.Regexp{
+				*regexp.MustCompile(`checkout`),
+				*regexp.MustCompile(`fetch\-task`),
+			},
+		})
+	}
+
 	if slices.Contains(taskNames, "deps-go") {
 		steps = append(steps, &configs.GenericCiStep{
 			Name:  "deps-go",
 			Image: imageSet.goStepImage,
 			Commands: []string{
-				`export GOPATH=$(pwd)/.go`,
+				`export GOPATH=/.go`,
 				`./task deps-go`,
 			},
-			WorkspacePersistPaths: []string{
-				"./.go",
+			CacheRestoreKeys: []string{
+				`deps-go-{{ checksum ".task-meta-cachekey-go" }}`,
+				`deps-go-`,
+			},
+			CacheSaveKey: `deps-go-{{ checksum ".task-meta-cachekey-go" }}`,
+			CacheSavePaths: []string{
+				"/.go",
 			},
 			Dependencies: []regexp.Regexp{
 				*regexp.MustCompile(`checkout`),
 				*regexp.MustCompile(`fetch\-task`),
+				*regexp.MustCompile(`cachekey`),
 			},
 		})
 	}
@@ -199,6 +219,7 @@ func main() {
 			Dependencies: []regexp.Regexp{
 				*regexp.MustCompile(`checkout`),
 				*regexp.MustCompile(`fetch\-task`),
+				*regexp.MustCompile(`cachekey`),
 			},
 		})
 	}
@@ -233,7 +254,7 @@ func main() {
 			// add language-specific setup steps
 			switch lang {
 			case "go":
-				commands = append(commands, `export GOPATH=$(pwd)/.go`)
+				commands = append(commands, `export GOPATH=/.go`)
 			case "js":
 				commands = append(commands, `corepack enable`)
 			}
@@ -244,6 +265,10 @@ func main() {
 				Name:     name,
 				Image:    image,
 				Commands: commands,
+				CacheRestoreKeys: []string{
+					fmt.Sprintf(`deps-%s-{{ checksum ".task-meta-cachekey-%s" }}`, lang, lang),
+					fmt.Sprintf("deps-%s-", lang),
+				},
 				Dependencies: []regexp.Regexp{
 					*regexp.MustCompile(`checkout`),
 					*regexp.MustCompile(`fetch\-task`),
@@ -266,8 +291,8 @@ func main() {
 			Image:    imageSet.gitStepImage,
 			Commands: commands,
 			WorkspacePersistPaths: []string{
-				"./.imgrefs",
-				"./**/.imgrefs",
+				"./.task-meta-imgrefs",
+				"./**/.task-meta-imgrefs",
 			},
 			Dependencies: []regexp.Regexp{
 				*regexp.MustCompile(`checkout`),

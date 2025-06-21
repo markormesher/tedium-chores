@@ -15,6 +15,7 @@ type GenericCiStep struct {
 	WorkspacePersistPaths []string
 	NoWorkspace           bool
 	NeedsDocker           bool
-	CacheKey              string
-	CachePaths            []string
+	CacheRestoreKeys      []string
+	CacheSaveKey          string
+	CacheSavePaths        []string
 }

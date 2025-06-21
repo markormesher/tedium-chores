@@ -82,7 +82,7 @@ func (p *ContainerImageProject) addRefsTask(taskFile *task.TaskFile) error {
 			{Command: `
 set -euo pipefail
 
-if [[ -f .imgrefs ]] && [[ ${CI+y} == "y" ]]; then
+if [[ -f .task-meta-imgrefs ]] && [[ ${CI+y} == "y" ]]; then
   echo "Skipping re-computing tags"
   exit 0
 fi
@@ -97,8 +97,8 @@ if ! git describe --tags >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! grep ".imgrefs" .gitignore >/dev/null 2>&1; then
-  echo ".gitignore must include .imgrefs to use the image builder tasks" >&2
+if ! grep ".task-meta-*" .gitignore >/dev/null 2>&1; then
+  echo ".gitignore must include .task-meta-* to use the image builder tasks" >&2
   exit 1
 fi
 
@@ -111,21 +111,21 @@ major_version=$(echo "${version}" | cut -d '.' -f 1)
 latest_version_overall=$(git tag -l | sort -V | tail -n 1)
 latest_version_within_major=$(git tag -l | grep "^${major_version}" | sort -V | tail -n 1)
 
-echo -n "" > .imgrefs
+echo -n "" > .task-meta-imgrefs
 
 if [[ ! -z "$img_name" ]]; then
-  echo "localhost/${img_name}" >> .imgrefs
-  echo "localhost/${img_name}:${version}" >> .imgrefs
+  echo "localhost/${img_name}" >> .task-meta-imgrefs
+  echo "localhost/${img_name}:${version}" >> .task-meta-imgrefs
 
   if [[ ! -z "$img_registry" ]] && [[ ${CI+y} == "y" ]]; then
-    echo "${img_registry}/${img_name}:${version}" >> .imgrefs
+    echo "${img_registry}/${img_name}:${version}" >> .task-meta-imgrefs
 
     if [[ "${is_exact_tag}" == "y" ]] && [[ "${version}" == "${latest_version_within_major}" ]]; then
-      echo "${img_registry}/${img_name}:${major_version}" >> .imgrefs
+      echo "${img_registry}/${img_name}:${major_version}" >> .task-meta-imgrefs
     fi
 
     if [[ "${is_exact_tag}" == "y" ]] && [[ "${version}" == "${latest_version_overall}" ]]; then
-      echo "${img_registry}/${img_name}:latest" >> .imgrefs
+      echo "${img_registry}/${img_name}:latest" >> .task-meta-imgrefs
     fi
   fi
 else
@@ -133,7 +133,7 @@ else
 fi
 
 echo "Image refs:"
-cat .imgrefs | grep "." || echo "None"
+cat .task-meta-imgrefs | grep "." || echo "None"
 `},
 		},
 	}
@@ -173,8 +173,8 @@ $builder build "${opts[@]}" .
 # Second (cached) build to get the image ID
 img=$($builder build "${opts[@]}" -q .)
 
-if [[ -f .imgrefs ]]; then
-  cat .imgrefs | while read tag; do
+if [[ -f .task-meta-imgrefs ]]; then
+  cat .task-meta-imgrefs | while read tag; do
     $builder tag "$img" "${tag}"
     echo "Tagged ${tag}"
   done
@@ -199,13 +199,13 @@ set -euo pipefail
 
 ` + p.builderSetup() + `
 
-if [[ -f .imgrefs ]]; then
-  cat .imgrefs | (grep -v "^localhost" || :) | while read tag; do
+if [[ -f .task-meta-imgrefs ]]; then
+  cat .task-meta-imgrefs | (grep -v "^localhost" || :) | while read tag; do
     $builder push "${tag}"
     echo "Pushed ${tag}"
   done
 else
-  echo "No .imgrefs file - nothing will be pushed"
+  echo "No .task-meta-imgrefs file - nothing will be pushed"
   exit 1
 fi
 `},
