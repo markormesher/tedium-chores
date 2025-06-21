@@ -10,7 +10,7 @@ import (
 )
 
 type BufProject struct {
-	ProjectRelativePath string
+	RelativePath string
 }
 
 func FindBufProjects(projectPath string) ([]Project, error) {
@@ -32,7 +32,7 @@ func FindBufProjects(projectPath string) ([]Project, error) {
 
 	for _, p := range bufGenPaths {
 		output = append(output, &BufProject{
-			ProjectRelativePath: path.Dir(p),
+			RelativePath: path.Dir(p),
 		})
 	}
 
@@ -56,10 +56,14 @@ func (p *BufProject) AddTasks(taskFile *task.TaskFile) error {
 	return nil
 }
 
+func (p *BufProject) GetRelativePath() string {
+	return p.RelativePath
+}
+
 func (p *BufProject) addLintTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("lint-buf-%s", util.PathToSafeName(p.ProjectRelativePath))
+	name := fmt.Sprintf("lint-buf-%s", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
-		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
 			{Command: `buf format --diff --exit-code`},
 			{Command: `buf lint`},
@@ -70,9 +74,9 @@ func (p *BufProject) addLintTask(taskFile *task.TaskFile) error {
 }
 
 func (p *BufProject) addLintFixTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("lintfix-buf-%s", util.PathToSafeName(p.ProjectRelativePath))
+	name := fmt.Sprintf("lintfix-buf-%s", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
-		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
 			{Command: `buf format --write`},
 		},
@@ -82,9 +86,9 @@ func (p *BufProject) addLintFixTask(taskFile *task.TaskFile) error {
 }
 
 func (p *BufProject) addGenTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("gen-buf-%s", util.PathToSafeName(p.ProjectRelativePath))
+	name := fmt.Sprintf("gen-buf-%s", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
-		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
 			{Command: `buf generate`},
 		},

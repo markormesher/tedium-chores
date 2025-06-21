@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -34,13 +35,6 @@ func main() {
 
 	if !stat.IsDir() {
 		l.Error("Project path doesn't exist or isn't a directory")
-		os.Exit(1)
-	}
-
-	// update the gitignore to handle state files we will create
-	err = updateGitignore(projectPath)
-	if err != nil {
-		l.Error("Error updating .gitignore", "error", err)
 		os.Exit(1)
 	}
 
@@ -78,6 +72,13 @@ func main() {
 
 	for _, p := range allProjects {
 		err := p.AddTasks(&taskFile)
+
+		err = updateGitignore(path.Join(projectPath, p.GetRelativePath()))
+		if err != nil {
+			l.Error("error updating .gitignore", "error", err)
+			os.Exit(1)
+		}
+
 		if err != nil {
 			l.Error("error adding tasks", "error", err)
 			os.Exit(1)
@@ -183,7 +184,7 @@ func updateGitignore(projectPath string) error {
 	_, statErr := os.Stat(gitignorePath)
 
 	var contents string
-	if statErr == os.ErrNotExist {
+	if errors.Is(statErr, os.ErrNotExist) {
 		contents = ""
 	} else {
 		contentsRaw, err := os.ReadFile(gitignorePath)

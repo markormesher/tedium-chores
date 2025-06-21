@@ -10,8 +10,8 @@ import (
 )
 
 type ContainerImageProject struct {
-	ContainerFileName   string
-	ProjectRelativePath string
+	RelativePath      string
+	ContainerFileName string
 }
 
 func FindContainerImageProjects(projectPath string) ([]Project, error) {
@@ -34,12 +34,16 @@ func FindContainerImageProjects(projectPath string) ([]Project, error) {
 
 	for _, p := range imgManifestPaths {
 		output = append(output, &ContainerImageProject{
-			ContainerFileName:   path.Base(p),
-			ProjectRelativePath: path.Dir(p),
+			RelativePath:      path.Dir(p),
+			ContainerFileName: path.Base(p),
 		})
 	}
 
 	return output, nil
+}
+
+func (p *ContainerImageProject) GetRelativePath() string {
+	return p.RelativePath
 }
 
 func (p *ContainerImageProject) AddTasks(taskFile *task.TaskFile) error {
@@ -75,9 +79,9 @@ fi
 }
 
 func (p *ContainerImageProject) addRefsTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("imgrefs-%s", util.PathToSafeName(p.ProjectRelativePath))
+	name := fmt.Sprintf("imgrefs-%s", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
-		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
 			{Command: `
 set -euo pipefail
@@ -142,11 +146,11 @@ cat .task-meta-imgrefs | grep "." || echo "None"
 }
 
 func (p *ContainerImageProject) addBuildTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("imgbuild-%s", util.PathToSafeName(p.ProjectRelativePath))
+	name := fmt.Sprintf("imgbuild-%s", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
-		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Dependencies: []string{
-			fmt.Sprintf("imgrefs-%s", util.PathToSafeName(p.ProjectRelativePath)),
+			fmt.Sprintf("imgrefs-%s", util.PathToSafeName(p.RelativePath)),
 		},
 		Commands: []task.Command{
 			{Command: `
@@ -187,11 +191,11 @@ fi
 }
 
 func (p *ContainerImageProject) addPushTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("imgpush-%s", util.PathToSafeName(p.ProjectRelativePath))
+	name := fmt.Sprintf("imgpush-%s", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
-		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Dependencies: []string{
-			fmt.Sprintf("imgrefs-%s", util.PathToSafeName(p.ProjectRelativePath)),
+			fmt.Sprintf("imgrefs-%s", util.PathToSafeName(p.RelativePath)),
 		},
 		Commands: []task.Command{
 			{Command: `

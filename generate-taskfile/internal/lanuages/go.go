@@ -10,7 +10,7 @@ import (
 )
 
 type GoProject struct {
-	ProjectRelativePath string
+	RelativePath string
 }
 
 func FindGoProjects(projectPath string) ([]Project, error) {
@@ -32,11 +32,15 @@ func FindGoProjects(projectPath string) ([]Project, error) {
 
 	for _, p := range goModPaths {
 		output = append(output, &GoProject{
-			ProjectRelativePath: path.Dir(p),
+			RelativePath: path.Dir(p),
 		})
 	}
 
 	return output, nil
+}
+
+func (p *GoProject) GetRelativePath() string {
+	return p.RelativePath
 }
 
 func (p *GoProject) AddTasks(taskFile *task.TaskFile) error {
@@ -59,9 +63,9 @@ func (p *GoProject) AddTasks(taskFile *task.TaskFile) error {
 }
 
 func (p *GoProject) addCacheKeyTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("cachekey-go-%s", util.PathToSafeName(p.ProjectRelativePath))
+	name := fmt.Sprintf("cachekey-go-%s", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
-		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
 			{Command: `sha256sum go.mod | awk '{print $1}' >> "{{.ROOT_DIR}}/.task-meta-cachekey-go"`},
 			{Command: `if [[ -f go.sum ]]; then sha256sum go.sum | awk '{print $1}' >> "{{.ROOT_DIR}}/.task-meta-cachekey-go"; fi`},
@@ -72,9 +76,9 @@ func (p *GoProject) addCacheKeyTask(taskFile *task.TaskFile) error {
 }
 
 func (p *GoProject) addDepsTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("deps-go-%s", util.PathToSafeName(p.ProjectRelativePath))
+	name := fmt.Sprintf("deps-go-%s", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
-		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
 			{Command: `go mod tidy && go mod download --json`},
 			{Command: `(go tool || true) | (grep '\.' || true) | while read t; do go build -o /dev/null $t; done`},
@@ -85,9 +89,9 @@ func (p *GoProject) addDepsTask(taskFile *task.TaskFile) error {
 }
 
 func (p *GoProject) addLintTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("lint-go-%s", util.PathToSafeName(p.ProjectRelativePath))
+	name := fmt.Sprintf("lint-go-%s", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
-		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
 			{Command: `
 exit_code=0
@@ -129,9 +133,9 @@ exit $exit_code
 }
 
 func (p *GoProject) addLintFixTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("lintfix-go-%s", util.PathToSafeName(p.ProjectRelativePath))
+	name := fmt.Sprintf("lintfix-go-%s", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
-		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
 			{Command: `gofmt -s -w .`},
 		},
@@ -142,7 +146,7 @@ func (p *GoProject) addLintFixTask(taskFile *task.TaskFile) error {
 
 func (p *GoProject) addTestTask(taskFile *task.TaskFile) error {
 	testFiles, err := util.Find(
-		p.ProjectRelativePath,
+		p.RelativePath,
 		util.FIND_FILES,
 		[]*regexp.Regexp{
 			regexp.MustCompile(`.*_test\.go`),
@@ -157,9 +161,9 @@ func (p *GoProject) addTestTask(taskFile *task.TaskFile) error {
 		return nil
 	}
 
-	name := fmt.Sprintf("test-go-%s", util.PathToSafeName(p.ProjectRelativePath))
+	name := fmt.Sprintf("test-go-%s", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
-		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
 			{Command: `go test ./...`},
 		},

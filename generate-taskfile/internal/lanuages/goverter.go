@@ -14,8 +14,8 @@ import (
 )
 
 type GoverterProject struct {
-	ProjectRelativePath string
-	GoverterFilePaths   []string
+	RelativePath      string
+	GoverterFilePaths []string
 }
 
 func FindGoverterProjects(projectPath string) ([]Project, error) {
@@ -50,8 +50,8 @@ func FindGoverterProjects(projectPath string) ([]Project, error) {
 
 			if len(goverterFiles) > 0 {
 				output = append(output, &GoverterProject{
-					ProjectRelativePath: path.Dir(p),
-					GoverterFilePaths:   goverterFiles,
+					RelativePath:      path.Dir(p),
+					GoverterFilePaths: goverterFiles,
 				})
 			}
 		}
@@ -90,6 +90,10 @@ func findGoverterProjectFiles(projectPath string) ([]string, error) {
 	return slices.Collect(maps.Keys(out)), nil
 }
 
+func (p *GoverterProject) GetRelativePath() string {
+	return p.RelativePath
+}
+
 func (p *GoverterProject) AddTasks(taskFile *task.TaskFile) error {
 	adders := []TaskAdder{
 		p.addGenTask,
@@ -106,7 +110,7 @@ func (p *GoverterProject) AddTasks(taskFile *task.TaskFile) error {
 }
 
 func (p *GoverterProject) addGenTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("gen-goverter-%s", util.PathToSafeName(p.ProjectRelativePath))
+	name := fmt.Sprintf("gen-goverter-%s", util.PathToSafeName(p.RelativePath))
 	safePaths := make([]string, len(p.GoverterFilePaths))
 	for i, path := range p.GoverterFilePaths {
 		safePaths[i] = strconv.Quote(path)
@@ -116,7 +120,7 @@ func (p *GoverterProject) addGenTask(taskFile *task.TaskFile) error {
 	slices.Sort(safePaths)
 
 	taskFile.Tasks[name] = &task.Task{
-		Directory: path.Join("{{.ROOT_DIR}}", p.ProjectRelativePath),
+		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
 			{
 				Command: fmt.Sprintf("go tool github.com/jmattheis/goverter/cmd/goverter gen %s", strings.Join(safePaths, " ")),
