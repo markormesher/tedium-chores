@@ -1,0 +1,6 @@
+name: "Update Debian version format"
+conventionalType: "chore"
+description: "This chore updates Debian container images to use version numbers rather than names."
+steps:
+  - image: "ghcr.io/markormesher/tedium-chore-rewrite-debian-versions:v0"
+    command: "/usr/local/bin/rewrite-debian-versions.sh"
