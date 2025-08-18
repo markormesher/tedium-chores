@@ -12,13 +12,11 @@ RUN go build -o ./build/main ./cmd/...
 
 # ---
 
-FROM gcr.io/distroless/base-debian12@sha256:4f6e739881403e7d50f52a4e574c4e3c88266031fd555303ee2f1ba262523d6a
+FROM docker.io/debian:12.11-slim
 WORKDIR /app
 
 LABEL image.registry=ghcr.io
 LABEL image.name=markormesher/tedium-chore-generate-tasks-and-ci
-
-COPY --from=docker.io/busybox:1.37.0-glibc@sha256:a2c55ed708c564a69a695e0a3bb16a4c47d2bb268d2ebd06f0d77336801b80de /bin/sh /bin/sh
 
 COPY --from=builder /app/build/main /usr/local/bin/
 
