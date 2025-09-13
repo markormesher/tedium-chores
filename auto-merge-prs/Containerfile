@@ -1,17 +1,18 @@
 FROM docker.io/golang:1.25.1@sha256:a5e935dbd8bc3a5ea24388e376388c9a69b40628b6788a81658a801abbec8f2e AS builder
 WORKDIR /app
 
+ARG CGO_ENABLED=0
+
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY ./cmd ./cmd
 
-ARG CGO_ENABLED=0
 RUN go build -o ./build/main ./cmd/...
 
 # ---
 
-FROM docker.io/debian:13.0-slim@sha256:c85a2732e97694ea77237c61304b3bb410e0e961dd6ee945997a06c788c545bb
+FROM ghcr.io/markormesher/scratch:v0.1.0@sha256:a2b570cd9813ce7fe7e6b0b388c3acc8aab4f077972917b5db453c39dd0e5680
 WORKDIR /app
 
 LABEL image.registry=ghcr.io
