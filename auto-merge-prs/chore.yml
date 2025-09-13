@@ -1,0 +1,6 @@
+name: "Auto-Merge PRs"
+description: "This chore merges any PRs that are elibigble."
+skipFinaliseStep: true
+steps:
+  - image: "ghcr.io/markormesher/tedium-chore-auto-merge-prs:v0"
+    command: "/usr/local/bin/main"
