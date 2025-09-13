@@ -56,7 +56,7 @@ func main() {
 
 		doMerge, reason := shouldMerge(branchProtected, requiredContexts, passingContexts)
 		if !doMerge {
-			l.Info("PR is cannot be merged", "reason", reason)
+			l.Info("PR cannot be merged", "reason", reason)
 			continue
 		}
 
