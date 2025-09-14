@@ -36,6 +36,14 @@ type CommitStatus struct {
 	} `json:"statuses"`
 }
 
+type GiteaMergeRequest struct {
+	Method string `json:"Do"`
+}
+
+type GitHubMergeRequest struct {
+	Method string `json:"merge_method"`
+}
+
 func (pr PullRequest) hasLabel(labelName string) bool {
 	for _, l := range pr.Labels {
 		if l.Name == labelName {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"slices"
-	"strings"
 	"time"
 )
 
@@ -76,6 +76,7 @@ func getPRs() []PullRequest {
 	err := json.Unmarshal(data, &prs)
 	if err != nil {
 		l.Error("error parsing PR list", "error", err)
+		os.Exit(1)
 	}
 	return prs
 }
@@ -87,6 +88,7 @@ func getPR(number int) PullRequest {
 	err := json.Unmarshal(data, &pr)
 	if err != nil {
 		l.Error("error parsing PR", "error", err)
+		os.Exit(1)
 	}
 	return pr
 }
@@ -104,6 +106,7 @@ func getBranchProtection(pr PullRequest) (bool, []string) {
 		err := json.Unmarshal(data, &bp)
 		if err != nil {
 			l.Error("error parsing branch protection", "error", err)
+			os.Exit(1)
 		}
 
 		if len(bp.StatusCheckContexts) > 0 {
@@ -121,6 +124,7 @@ func getBranchProtection(pr PullRequest) (bool, []string) {
 		err := json.Unmarshal(data, &bp)
 		if err != nil {
 			l.Error("error parsing branch protection", "error", err)
+			os.Exit(1)
 		}
 
 		if bp.RequiredStatusChecks != nil {
@@ -139,11 +143,12 @@ func getPassingContexts(pr PullRequest) []string {
 	err := json.Unmarshal(data, &combinedStatus)
 	if err != nil {
 		l.Error("error parsing commit status", "error", err)
+		os.Exit(1)
 	}
 
 	passing := []string{}
 	for _, s := range combinedStatus.Statuses {
-		// github uses "state", gitea uses "status", so check both
+		// gitea uses "status", github uses "state", so check both
 		if s.Status == "success" || s.State == "success" {
 			passing = append(passing, s.Context)
 		}
@@ -154,17 +159,31 @@ func getPassingContexts(pr PullRequest) []string {
 
 func mergePR(pr PullRequest) {
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/merge", apiBase, repoOwner, repoName, pr.Number)
-	body := strings.NewReader(fmt.Sprintf(`{"Do":"squash","merge_message":"Squash merge PR #%d: %s"}`, pr.Number, pr.Title))
+
+	var body any
+	switch apiType {
+	case "gitea":
+		body = GiteaMergeRequest{Method: "squash"}
+
+	case "github":
+		body = GitHubMergeRequest{Method: "squash"}
+	}
+
+	bodyBytes, err := json.Marshal(body)
+	if err != nil {
+		l.Error("error marshalling merge request", "error", err)
+		os.Exit(1)
+	}
 
 	var data []byte
 	var status int
 
 	switch apiType {
 	case "gitea":
-		data, status = doRequest("POST", url, body)
+		data, status = doRequest("POST", url, bytes.NewReader(bodyBytes))
 
 	case "github":
-		data, status = doRequest("PUT", url, body)
+		data, status = doRequest("PUT", url, bytes.NewReader(bodyBytes))
 	}
 
 	if status != http.StatusOK {
