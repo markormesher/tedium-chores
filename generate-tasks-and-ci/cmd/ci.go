@@ -17,7 +17,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const cacheVersion = 5
+const cacheVersion = 6
 
 // ImageSet is a utility type to store the container image references used for various steps.
 type ImageSet struct {
@@ -204,7 +204,7 @@ func updateCIConfig(projectPath string, ciType string) {
 		}
 		for _, t := range taskNames {
 			if strings.HasPrefix(t, "deps-js-") {
-				cachePaths = append(cachePaths, strings.ReplaceAll(taskfile.Tasks[t].Directory, "{{.ROOT_DIR}}/", "")+"/node_modules")
+				cachePaths = append(cachePaths, path.Join(strings.ReplaceAll(taskfile.Tasks[t].Directory, "{{.ROOT_DIR}}", "."), "node_modules"))
 			}
 		}
 
