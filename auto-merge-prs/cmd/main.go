@@ -34,8 +34,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	prs := getPRs()
+	prs, err := getPRs()
+	if err != nil {
+		l.Error("error getting PRs", "error", err)
+		os.Exit(1)
+	}
 
+	anyFailed := false
+
+Outer:
 	for _, pr := range prs {
 		l.Info("considering PR", "title", pr.Title)
 
@@ -48,11 +55,27 @@ func main() {
 		for tries := 0; tries < maxMergeableRetries && !pr.Mergeable; tries++ {
 			l.Info("waiting for PR to become mergeable")
 			time.Sleep(mergeableRetryDelay)
-			pr = getPR(pr.Number)
+			pr, err = getPR(pr.Number)
+			if err != nil {
+				l.Info("error with this PR; will continue with others", "error", err)
+				anyFailed = true
+				continue Outer
+			}
 		}
 
-		branchProtected, requiredContexts := getBranchProtection(pr)
-		passingContexts := getPassingContexts(pr)
+		branchProtected, requiredContexts, err := getBranchProtection(pr)
+		if err != nil {
+			l.Info("error with this PR; will continue with others", "error", err)
+			anyFailed = true
+			continue Outer
+		}
+
+		passingContexts, err := getPassingContexts(pr)
+		if err != nil {
+			l.Info("error with this PR; will continue with others", "error", err)
+			anyFailed = true
+			continue Outer
+		}
 
 		doMerge, reason := shouldMerge(branchProtected, requiredContexts, passingContexts)
 		if !doMerge {
@@ -61,89 +84,108 @@ func main() {
 		}
 
 		l.Info("attempting to merge PR...")
-		mergePR(pr)
+		err = mergePR(pr)
+		if err != nil {
+			l.Info("error with this PR; will continue with others", "error", err)
+			anyFailed = true
+			continue Outer
+		}
 		l.Info("merged")
 
 		// slight pause to make sure mergability of other PRs is re-evaluated by the platform
-		time.Sleep(time.Second * 2)
+		time.Sleep(time.Second * 10)
+	}
+
+	if anyFailed {
+		os.Exit(1)
 	}
 }
 
-func getPRs() []PullRequest {
+func getPRs() ([]PullRequest, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls?state=open", apiBase, repoOwner, repoName)
-	data, _ := doRequest("GET", url, nil)
+	data, _, err := doRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error getting PR list: %w", err)
+	}
 	var prs []PullRequest
-	err := json.Unmarshal(data, &prs)
+	err = json.Unmarshal(data, &prs)
 	if err != nil {
-		l.Error("error parsing PR list", "error", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("error parsing PR list: %w", err)
 	}
-	return prs
+	return prs, nil
 }
 
-func getPR(number int) PullRequest {
+func getPR(number int) (PullRequest, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d", apiBase, repoOwner, repoName, number)
-	data, _ := doRequest("GET", url, nil)
-	var pr PullRequest
-	err := json.Unmarshal(data, &pr)
+	data, _, err := doRequest("GET", url, nil)
 	if err != nil {
-		l.Error("error parsing PR", "error", err)
-		os.Exit(1)
+		return PullRequest{}, fmt.Errorf("error getting PR: %w", err)
 	}
-	return pr
+	var pr PullRequest
+	err = json.Unmarshal(data, &pr)
+	if err != nil {
+		return PullRequest{}, fmt.Errorf("error parsing PR: %w", err)
+	}
+	return pr, nil
 }
 
-func getBranchProtection(pr PullRequest) (bool, []string) {
+func getBranchProtection(pr PullRequest) (bool, []string, error) {
 	switch apiType {
 	case "gitea":
 		url := fmt.Sprintf("%s/repos/%s/%s/branch_protections/%s", apiBase, repoOwner, repoName, pr.Base.Ref)
-		data, status := doRequest("GET", url, nil)
+		data, status, err := doRequest("GET", url, nil)
+		if err != nil {
+			return false, nil, fmt.Errorf("error getting branch protection: %w", err)
+		}
 		if status == http.StatusNotFound {
-			return false, nil
+			return false, nil, nil
 		}
 
 		var bp GiteaBranchProtection
-		err := json.Unmarshal(data, &bp)
+		err = json.Unmarshal(data, &bp)
 		if err != nil {
-			l.Error("error parsing branch protection", "error", err)
-			os.Exit(1)
+			return false, nil, fmt.Errorf("error parsing branch protection: %w", err)
 		}
 
 		if len(bp.StatusCheckContexts) > 0 {
-			return true, bp.StatusCheckContexts
+			return true, bp.StatusCheckContexts, nil
 		}
 
 	case "github":
 		url := fmt.Sprintf("%s/repos/%s/%s/branches/%s/protection", apiBase, repoOwner, repoName, pr.Base.Ref)
-		data, status := doRequest("GET", url, nil)
+		data, status, err := doRequest("GET", url, nil)
+		if err != nil {
+			return false, nil, fmt.Errorf("error getting branch protection: %w", err)
+		}
 		if status == http.StatusNotFound {
-			return false, nil
+			return false, nil, nil
 		}
 
 		var bp GitHubBranchProtection
-		err := json.Unmarshal(data, &bp)
+		err = json.Unmarshal(data, &bp)
 		if err != nil {
-			l.Error("error parsing branch protection", "error", err)
-			os.Exit(1)
+			return false, nil, fmt.Errorf("error parsing branch protection: %w", err)
 		}
 
 		if bp.RequiredStatusChecks != nil {
-			return true, bp.RequiredStatusChecks.Contexts
+			return true, bp.RequiredStatusChecks.Contexts, nil
 		}
 	}
 
-	return false, nil
+	return false, nil, nil
 }
 
-func getPassingContexts(pr PullRequest) []string {
+func getPassingContexts(pr PullRequest) ([]string, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/commits/%s/status", apiBase, repoOwner, repoName, pr.Head.SHA)
-	data, _ := doRequest("GET", url, nil)
+	data, _, err := doRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error getting commit status: %w", err)
+	}
 
 	var combinedStatus CommitStatus
-	err := json.Unmarshal(data, &combinedStatus)
+	err = json.Unmarshal(data, &combinedStatus)
 	if err != nil {
-		l.Error("error parsing commit status", "error", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("error parsing commit status: %w", err)
 	}
 
 	passing := []string{}
@@ -154,10 +196,10 @@ func getPassingContexts(pr PullRequest) []string {
 		}
 	}
 
-	return passing
+	return passing, nil
 }
 
-func mergePR(pr PullRequest) {
+func mergePR(pr PullRequest) error {
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/merge", apiBase, repoOwner, repoName, pr.Number)
 
 	var body any
@@ -171,8 +213,7 @@ func mergePR(pr PullRequest) {
 
 	bodyBytes, err := json.Marshal(body)
 	if err != nil {
-		l.Error("error marshalling merge request", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("error marshalling merge request: %w", err)
 	}
 
 	var data []byte
@@ -180,16 +221,21 @@ func mergePR(pr PullRequest) {
 
 	switch apiType {
 	case "gitea":
-		data, status = doRequest("POST", url, bytes.NewReader(bodyBytes))
+		data, status, err = doRequest("POST", url, bytes.NewReader(bodyBytes))
 
 	case "github":
-		data, status = doRequest("PUT", url, bytes.NewReader(bodyBytes))
+		data, status, err = doRequest("PUT", url, bytes.NewReader(bodyBytes))
+	}
+
+	if err != nil {
+		return fmt.Errorf("merge failed: %w", err)
 	}
 
 	if status != http.StatusOK {
-		l.Error("merge failed", "status", status, "body", string(data))
-		os.Exit(1)
+		return fmt.Errorf("merge failed, status %d, message: %s", status, string(data))
 	}
+
+	return nil
 }
 
 func shouldMerge(protected bool, requiredContexts []string, passingContexts []string) (bool, string) {
@@ -210,15 +256,14 @@ func shouldMerge(protected bool, requiredContexts []string, passingContexts []st
 	return true, "all requirements are met"
 }
 
-func doRequest(method string, url string, body io.Reader) ([]byte, int) {
+func doRequest(method string, url string, body io.Reader) ([]byte, int, error) {
 	req, _ := http.NewRequest(method, url, body)
 	req.Header.Set("Authorization", "Bearer "+apiToken)
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		l.Error("HTTP error", "error", err)
-		os.Exit(1)
+		return nil, 0, err
 	}
 
 	defer func() {
@@ -231,8 +276,8 @@ func doRequest(method string, url string, body io.Reader) ([]byte, int) {
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		l.Error("error reading request body", "error", err)
-		os.Exit(1)
+		return nil, 0, err
 	}
 
-	return data, resp.StatusCode
+	return data, resp.StatusCode, nil
 }
