@@ -17,7 +17,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const cacheVersion = 6
+const cacheVersion = 7
 
 // ImageSet is a utility type to store the container image references used for various steps.
 type ImageSet struct {
