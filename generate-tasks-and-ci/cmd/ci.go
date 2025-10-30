@@ -216,7 +216,7 @@ func updateCIConfig(projectPath string, ciType string) {
 				fmt.Sprintf(`deps-js-v%d-`, cacheVersion),
 			},
 			Commands: []string{
-				`corepack enable`,
+				`npm install -g --force yarn pnpm`,
 				`./task deps-js`,
 			},
 			CacheSaveKey:   fmt.Sprintf(`deps-js-v%d-{{ checksum ".task-meta-cachekey-js" }}`, cacheVersion),
@@ -262,7 +262,7 @@ func updateCIConfig(projectPath string, ciType string) {
 				commands = append(commands, `export GOPATH=/.go`)
 				commands = append(commands, `export GOCACHE=/.gocache`)
 			case "js":
-				commands = append(commands, `corepack enable`)
+				commands = append(commands, `npm install -g --force yarn pnpm`)
 			}
 
 			commands = append(commands, fmt.Sprintf("./task %s", name))
