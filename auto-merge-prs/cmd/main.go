@@ -257,18 +257,7 @@ func deleteBranch(pr PullRequest) error {
 		url = fmt.Sprintf("%s/repos/%s/%s/git/refs/%s", apiBase, repoOwner, repoName, pr.Head.Ref)
 	}
 
-	var data []byte
-	var status int
-	var err error
-
-	switch apiType {
-	case "gitea":
-		data, status, err = doRequest("DELETE", url, nil)
-
-	case "github":
-		data, status, err = doRequest("DELETE", url, nil)
-	}
-
+	data, status, err := doRequest("DELETE", url, nil)
 	if err != nil {
 		return fmt.Errorf("merge failed: %w", err)
 	}
