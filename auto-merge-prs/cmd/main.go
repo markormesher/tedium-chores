@@ -263,7 +263,7 @@ func deleteBranch(pr PullRequest) error {
 	}
 
 	if status != http.StatusOK {
-		return fmt.Errorf("merge failed, status %d, message: %s", status, string(data))
+		return fmt.Errorf("delete failed, status %d, message: %s", status, string(data))
 	}
 
 	return nil
