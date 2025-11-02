@@ -42,7 +42,7 @@ func main() {
 
 	anyFailed := false
 
-Outer:
+PRLoop:
 	for _, pr := range prs {
 		l.Info("considering PR", "title", pr.Title)
 
@@ -59,7 +59,7 @@ Outer:
 			if err != nil {
 				l.Info("error with this PR; will continue with others", "error", err)
 				anyFailed = true
-				continue Outer
+				continue PRLoop
 			}
 		}
 
@@ -67,14 +67,14 @@ Outer:
 		if err != nil {
 			l.Info("error with this PR; will continue with others", "error", err)
 			anyFailed = true
-			continue Outer
+			continue PRLoop
 		}
 
 		passingContexts, err := getPassingContexts(pr)
 		if err != nil {
 			l.Info("error with this PR; will continue with others", "error", err)
 			anyFailed = true
-			continue Outer
+			continue PRLoop
 		}
 
 		doMerge, reason := shouldMerge(branchProtected, requiredContexts, passingContexts)
@@ -88,9 +88,18 @@ Outer:
 		if err != nil {
 			l.Info("error with this PR; will continue with others", "error", err)
 			anyFailed = true
-			continue Outer
+			continue PRLoop
 		}
 		l.Info("merged")
+
+		l.Info("deleting branch...")
+		err = deleteBranch(pr)
+		if err != nil {
+			l.Info("error with this PR; will continue with others", "error", err)
+			anyFailed = true
+			continue PRLoop
+		}
+		l.Info("deleted")
 
 		// slight pause to make sure mergability of other PRs is re-evaluated by the platform
 		time.Sleep(time.Second * 10)
@@ -233,6 +242,28 @@ func mergePR(pr PullRequest) error {
 
 	if status != http.StatusOK {
 		return fmt.Errorf("merge failed, status %d, message: %s", status, string(data))
+	}
+
+	return nil
+}
+
+func deleteBranch(pr PullRequest) error {
+	var url string
+	switch apiType {
+	case "gitea":
+		url = fmt.Sprintf("%s/repos/%s/%s/branches/%s", apiBase, repoOwner, repoName, pr.Head.Ref)
+
+	case "github":
+		url = fmt.Sprintf("%s/repos/%s/%s/git/refs/%s", apiBase, repoOwner, repoName, pr.Head.Ref)
+	}
+
+	data, status, err := doRequest("DELETE", url, nil)
+	if err != nil {
+		return fmt.Errorf("merge failed: %w", err)
+	}
+
+	if status != http.StatusOK {
+		return fmt.Errorf("delete failed, status %d, message: %s", status, string(data))
 	}
 
 	return nil
