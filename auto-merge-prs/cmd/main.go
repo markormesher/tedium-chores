@@ -25,7 +25,7 @@ var (
 	httpClient = &http.Client{Timeout: time.Second * 15}
 
 	maxMergeableRetries = 5
-	mergeableRetryDelay = time.Second * 5
+	mergeableRetryDelay = time.Second * 15
 )
 
 func main() {
@@ -52,27 +52,36 @@ PRLoop:
 		}
 
 		// wait for it to become mergeable
-		for tries := 0; tries < maxMergeableRetries && !pr.Mergeable; tries++ {
+		for range maxMergeableRetries {
 			l.Info("waiting for PR to become mergeable")
 			time.Sleep(mergeableRetryDelay)
 			pr, err = getPR(pr.Number)
 			if err != nil {
-				l.Info("error with this PR; will continue with others", "error", err)
+				l.Info("error loading this PR; will continue with others", "error", err)
 				anyFailed = true
 				continue PRLoop
 			}
+
+			if pr.Mergeable {
+				break
+			}
+		}
+
+		if !pr.Mergeable {
+			l.Info("PR is not mergeable")
+			continue PRLoop
 		}
 
 		branchProtected, requiredContexts, err := getBranchProtection(pr)
 		if err != nil {
-			l.Info("error with this PR; will continue with others", "error", err)
+			l.Info("error checking branch protection; will continue with others", "error", err)
 			anyFailed = true
 			continue PRLoop
 		}
 
 		passingContexts, err := getPassingContexts(pr)
 		if err != nil {
-			l.Info("error with this PR; will continue with others", "error", err)
+			l.Info("error getting passing contexts; will continue with others", "error", err)
 			anyFailed = true
 			continue PRLoop
 		}
@@ -86,7 +95,7 @@ PRLoop:
 		l.Info("attempting to merge PR...")
 		err = mergePR(pr)
 		if err != nil {
-			l.Info("error with this PR; will continue with others", "error", err)
+			l.Info("error merging PR; will continue with others", "error", err)
 			anyFailed = true
 			continue PRLoop
 		}
@@ -95,14 +104,14 @@ PRLoop:
 		l.Info("deleting branch...")
 		err = deleteBranch(pr)
 		if err != nil {
-			l.Info("error with this PR; will continue with others", "error", err)
+			l.Info("error deleting branch; will continue with others", "error", err)
 			anyFailed = true
 			continue PRLoop
 		}
 		l.Info("deleted")
 
-		// slight pause to make sure mergability of other PRs is re-evaluated by the platform
-		time.Sleep(time.Second * 10)
+		// pause to make sure mergability of other PRs is re-evaluated by the platform
+		time.Sleep(time.Second * 30)
 	}
 
 	if anyFailed {
