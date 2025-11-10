@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"slices"
 	"time"
@@ -150,7 +151,7 @@ func getPR(number int) (PullRequest, error) {
 func getBranchProtection(pr PullRequest) (bool, []string, error) {
 	switch apiType {
 	case "gitea":
-		url := fmt.Sprintf("%s/repos/%s/%s/branch_protections/%s", apiBase, repoOwner, repoName, pr.Base.Ref)
+		url := fmt.Sprintf("%s/repos/%s/%s/branch_protections/%s", apiBase, repoOwner, repoName, neturl.PathEscape(pr.Base.Ref))
 		data, status, err := doRequest("GET", url, nil)
 		if err != nil {
 			return false, nil, fmt.Errorf("error getting branch protection: %w", err)
@@ -170,7 +171,7 @@ func getBranchProtection(pr PullRequest) (bool, []string, error) {
 		}
 
 	case "github":
-		url := fmt.Sprintf("%s/repos/%s/%s/branches/%s/protection", apiBase, repoOwner, repoName, pr.Base.Ref)
+		url := fmt.Sprintf("%s/repos/%s/%s/branches/%s/protection", apiBase, repoOwner, repoName, neturl.PathEscape(pr.Base.Ref))
 		data, status, err := doRequest("GET", url, nil)
 		if err != nil {
 			return false, nil, fmt.Errorf("error getting branch protection: %w", err)
@@ -260,10 +261,10 @@ func deleteBranch(pr PullRequest) error {
 	var url string
 	switch apiType {
 	case "gitea":
-		url = fmt.Sprintf("%s/repos/%s/%s/branches/%s", apiBase, repoOwner, repoName, pr.Head.Ref)
+		url = fmt.Sprintf("%s/repos/%s/%s/branches/%s", apiBase, repoOwner, repoName, neturl.PathEscape(pr.Head.Ref))
 
 	case "github":
-		url = fmt.Sprintf("%s/repos/%s/%s/git/refs/%s", apiBase, repoOwner, repoName, pr.Head.Ref)
+		url = fmt.Sprintf("%s/repos/%s/%s/git/refs/%s", apiBase, repoOwner, repoName, neturl.PathEscape(pr.Head.Ref))
 	}
 
 	data, status, err := doRequest("DELETE", url, nil)
