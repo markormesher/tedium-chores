@@ -43,7 +43,12 @@ func main() {
 		l.Error("error opening containerfile", "error", err)
 		os.Exit(1)
 	}
-	defer containerFile.Close()
+	defer func() {
+		err := containerFile.Close()
+		if err != nil {
+			l.Error("error closing file", "error", err)
+		}
+	}()
 
 	lines := []string{}
 
