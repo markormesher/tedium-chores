@@ -35,13 +35,35 @@ func main() {
 		labels["org.opencontainers.image.url"] = fmt.Sprintf("https://%s/%s/%s", repoDomain, repoOwner, repoName)
 	}
 
-	// open the file and read it into lines
-	containerFile, err := os.Open("/tedium/repo/Containerfile")
-	if errors.Is(err, fs.ErrNotExist) {
-		return
-	} else if err != nil {
-		l.Error("error opening containerfile", "error", err)
+	err := fs.WalkDir(os.DirFS("/tedium/repo"), ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			l.Error("error finding containerfiles", "error", err)
+			os.Exit(1)
+		}
+
+		if d.Name() == "Containerfile" || d.Name() == "Dockerfile" {
+			err := processFile(path)
+			l.Error("error processing file", "path", path, "error", err)
+			os.Exit(1)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		l.Error("error finding containerfiles", "error", err)
 		os.Exit(1)
+	}
+
+}
+
+func processFile(path string) error {
+	// open the file and read it into lines
+	containerFile, err := os.Open(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	} else if err != nil {
+		return err
 	}
 	defer func() {
 		err := containerFile.Close()
@@ -58,8 +80,7 @@ func main() {
 	}
 
 	if err := scanner.Err(); err != nil {
-		l.Error("error reading containerfile", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("error reading file: %w", err)
 	}
 
 	// apply operations
@@ -73,11 +94,12 @@ func main() {
 
 	// re-write the file
 	output := strings.Join(lines, "\n")
-	err = os.WriteFile("/tedium/repo/Containerfile", []byte(output), os.ModePerm)
+	err = os.WriteFile(path, []byte(output), os.ModePerm)
 	if err != nil {
-		l.Error("error writing containerfile", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("error writing file: %w", err)
 	}
+
+	return nil
 }
 
 func moveLabelsToEnd(lines []string) []string {
