@@ -1,0 +1,27 @@
+FROM docker.io/golang:1.25.5@sha256:36b4f45d2874905b9e8573b783292629bcb346d0a70d8d7150b6df545234818f AS builder
+WORKDIR /app
+
+ARG CGO_ENABLED=0
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY ./cmd ./cmd
+
+RUN go build -o ./build/main ./cmd/...
+
+# ---
+
+FROM docker.io/debian:13.2-slim@sha256:e711a7b30ec1261130d0a121050b4ed81d7fb28aeabcf4ea0c7876d4e9f5aca2
+WORKDIR /app
+
+RUN apt update \
+  && apt install -y --no-install-recommends curl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+LABEL image.registry=ghcr.io
+LABEL image.name=markormesher/tedium-chore-update-image-labels
+
+COPY --from=builder /app/build/main /usr/local/bin/
+
+CMD ["/usr/local/bin/main"]
