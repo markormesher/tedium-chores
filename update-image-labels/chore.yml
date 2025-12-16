@@ -1,0 +1,5 @@
+name: "Update image labels"
+description: "This chore sets and updates image labels in the root Containerfile."
+steps:
+  - image: "ghcr.io/markormesher/tedium-chore-update-image-labels:v0"
+    command: "/usr/local/bin/main"
