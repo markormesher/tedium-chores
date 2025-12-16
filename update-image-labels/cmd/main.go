@@ -2,16 +2,18 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
 var jsonHandler = slog.NewJSONHandler(os.Stdout, nil)
 var l = slog.New(jsonHandler)
+
+var rootPath = "/tedium/repo"
 
 var labels = map[string]string{
 	// labels we will try to set later
@@ -35,16 +37,19 @@ func main() {
 		labels["org.opencontainers.image.url"] = fmt.Sprintf("https://%s/%s/%s", repoDomain, repoOwner, repoName)
 	}
 
-	err := fs.WalkDir(os.DirFS("/tedium/repo"), ".", func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(os.DirFS(rootPath), ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			l.Error("error finding containerfiles", "error", err)
 			os.Exit(1)
 		}
 
 		if d.Name() == "Containerfile" || d.Name() == "Dockerfile" {
-			err := processFile(path)
-			l.Error("error processing file", "path", path, "error", err)
-			os.Exit(1)
+			fullPath := filepath.Join(rootPath, path)
+			err := processFile(fullPath)
+			if err != nil {
+				l.Error("error processing file", "path", fullPath, "error", err)
+				os.Exit(1)
+			}
 		}
 
 		return nil
@@ -58,11 +63,11 @@ func main() {
 }
 
 func processFile(path string) error {
+	l.Info("processing file", "file", path)
+
 	// open the file and read it into lines
 	containerFile, err := os.Open(path)
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil
-	} else if err != nil {
+	if err != nil {
 		return err
 	}
 	defer func() {
