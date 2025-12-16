@@ -516,8 +516,13 @@ func (s *ImageSet) populateMissingImages(ciType string) {
 		if ciType == "circle" {
 			s.imgStepImage = "cimg/base:2024.12"
 		} else {
-			s.imgStepImage = "quay.io/podman/stable:v5.3.1"
+			s.imgStepImage = "quay.io/podman/stable:v5.7.1-immutable"
 		}
+	}
+
+	// special case: update podman images to use the -immutable flavours
+	if strings.Contains(s.imgStepImage, "podman") && !strings.Contains(s.imgStepImage, "immutable") {
+		s.imgStepImage = "quay.io/podman/stable:v5.7.1-immutable"
 	}
 
 	if s.jsStepImage == "" {
