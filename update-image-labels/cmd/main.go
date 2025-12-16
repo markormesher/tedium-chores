@@ -59,7 +59,6 @@ func main() {
 		l.Error("error finding containerfiles", "error", err)
 		os.Exit(1)
 	}
-
 }
 
 func processFile(path string) error {
