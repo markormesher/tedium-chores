@@ -494,39 +494,35 @@ func extractImagesFromCircleConfig(config ci.CircleConfig) ImageSet {
 }
 
 func (s *ImageSet) populateMissingImages(ciType string) {
+	// set missing image versions
 	// these defaults will slowly get out of date, but they will only be applied to first-time ci and Renovate will update them anyway
 
 	if s.bufStepImage == "" {
-		s.bufStepImage = "docker.io/bufbuild/buf:1.48.0"
+		s.bufStepImage = "docker.io/bufbuild/buf:1.61.0"
 	}
 
 	if s.fetchTaskStepImage == "" {
-		s.fetchTaskStepImage = "ghcr.io/markormesher/task-fetcher:v0.4.1"
+		s.fetchTaskStepImage = "ghcr.io/markormesher/task-fetcher:v0.5.47"
 	}
 
 	if s.gitStepImage == "" {
-		s.gitStepImage = "docker.io/alpine/git:v2.47.1"
+		s.gitStepImage = "docker.io/alpine/git:v2.52.0"
 	}
 
 	if s.goStepImage == "" {
-		s.goStepImage = "docker.io/golang:1.23.4"
+		s.goStepImage = "docker.io/golang:1.25.5"
 	}
 
 	if s.imgStepImage == "" {
 		if ciType == "circle" {
-			s.imgStepImage = "cimg/base:2024.12"
+			s.imgStepImage = "cimg/base:2025.12"
 		} else {
 			s.imgStepImage = "quay.io/podman/stable:v5.7.1-immutable"
 		}
 	}
 
-	// special case: update podman images to use the -immutable flavours
-	if strings.Contains(s.imgStepImage, "podman") && !strings.Contains(s.imgStepImage, "immutable") {
-		s.imgStepImage = "quay.io/podman/stable:v5.7.1-immutable"
-	}
-
 	if s.jsStepImage == "" {
-		s.jsStepImage = "docker.io/node:23.5.0-slim"
+		s.jsStepImage = "docker.io/node:24.12.0-slim"
 	}
 
 	if s.sqlcStepImage == "" {
@@ -535,9 +531,21 @@ func (s *ImageSet) populateMissingImages(ciType string) {
 
 	if s.utilStepImage == "" {
 		if ciType == "circle" {
-			s.utilStepImage = "cimg/base:2024.12"
+			s.utilStepImage = "cimg/base:2025.12"
 		} else {
 			s.utilStepImage = "docker.io/busybox:1.37.0"
 		}
+	}
+
+	// other image modifications
+
+	// update podman images to use the -immutable flavours
+	if strings.Contains(s.imgStepImage, "podman") && !strings.Contains(s.imgStepImage, "immutable") {
+		s.imgStepImage = s.imgStepImage + "-immutable"
+	}
+
+	// update git image to include registry
+	if strings.HasPrefix(s.gitStepImage, "alpine/git") {
+		s.gitStepImage = "docker.io/" + s.gitStepImage
 	}
 }
