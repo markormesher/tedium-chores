@@ -10,6 +10,7 @@ import (
 )
 
 type GoProject struct {
+	ProjectPath  string
 	RelativePath string
 }
 
@@ -32,11 +33,16 @@ func FindGoProjects(projectPath string) ([]Project, error) {
 
 	for _, p := range goModPaths {
 		output = append(output, &GoProject{
+			ProjectPath:  path.Join(projectPath, path.Dir(p)),
 			RelativePath: path.Dir(p),
 		})
 	}
 
 	return output, nil
+}
+
+func (p *GoProject) GetProjectPath() string {
+	return p.ProjectPath
 }
 
 func (p *GoProject) GetRelativePath() string {
@@ -145,8 +151,10 @@ func (p *GoProject) addLintFixTask(taskFile *task.TaskFile) error {
 }
 
 func (p *GoProject) addTestTask(taskFile *task.TaskFile) error {
+	fmt.Println(p.ProjectPath + "...")
+
 	testFiles, err := util.Find(
-		p.RelativePath,
+		p.ProjectPath,
 		util.FIND_FILES,
 		[]*regexp.Regexp{
 			regexp.MustCompile(`.*_test\.go`),
@@ -156,6 +164,8 @@ func (p *GoProject) addTestTask(taskFile *task.TaskFile) error {
 	if err != nil {
 		return fmt.Errorf("error checking for Go test files: %w", err)
 	}
+
+	fmt.Println(testFiles)
 
 	if len(testFiles) == 0 {
 		return nil

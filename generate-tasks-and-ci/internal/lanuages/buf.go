@@ -10,6 +10,7 @@ import (
 )
 
 type BufProject struct {
+	ProjectPath  string
 	RelativePath string
 }
 
@@ -32,6 +33,7 @@ func FindBufProjects(projectPath string) ([]Project, error) {
 
 	for _, p := range bufGenPaths {
 		output = append(output, &BufProject{
+			ProjectPath:  path.Join(projectPath, path.Dir(p)),
 			RelativePath: path.Dir(p),
 		})
 	}
@@ -54,6 +56,10 @@ func (p *BufProject) AddTasks(taskFile *task.TaskFile) error {
 	}
 
 	return nil
+}
+
+func (p *BufProject) GetProjectPath() string {
+	return p.ProjectPath
 }
 
 func (p *BufProject) GetRelativePath() string {

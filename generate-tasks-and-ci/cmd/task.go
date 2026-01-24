@@ -49,7 +49,7 @@ func updateTaskfile(projectPath string) {
 	}
 
 	for _, p := range allProjects {
-		err := updateGitignore(path.Join(projectPath, p.GetRelativePath()))
+		err := updateGitignore(p.GetProjectPath())
 		if err != nil {
 			l.Error("error updating .gitignore", "error", err)
 			os.Exit(1)

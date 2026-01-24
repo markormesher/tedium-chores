@@ -13,6 +13,7 @@ import (
 )
 
 type JSProject struct {
+	ProjectPath       string
 	RelativePath      string
 	PackageManagerCmd string
 	Config            PackageJSON
@@ -70,6 +71,7 @@ func FindJSProjects(projectPath string) ([]Project, error) {
 		}
 
 		output = append(output, &JSProject{
+			ProjectPath:       path.Join(projectPath, path.Dir(p)),
 			RelativePath:      path.Dir(p),
 			PackageManagerCmd: packageManagerCmd,
 			Config:            config,
@@ -77,6 +79,10 @@ func FindJSProjects(projectPath string) ([]Project, error) {
 	}
 
 	return output, nil
+}
+
+func (p *JSProject) GetProjectPath() string {
+	return p.ProjectPath
 }
 
 func (p *JSProject) GetRelativePath() string {

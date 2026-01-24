@@ -14,6 +14,7 @@ import (
 )
 
 type GoverterProject struct {
+	ProjectPath       string
 	RelativePath      string
 	GoverterFilePaths []string
 }
@@ -50,6 +51,7 @@ func FindGoverterProjects(projectPath string) ([]Project, error) {
 
 			if len(goverterFiles) > 0 {
 				output = append(output, &GoverterProject{
+					ProjectPath:       path.Join(projectPath, path.Dir(p)),
 					RelativePath:      path.Dir(p),
 					GoverterFilePaths: goverterFiles,
 				})
@@ -88,6 +90,10 @@ func findGoverterProjectFiles(projectPath string) ([]string, error) {
 	}
 
 	return slices.Collect(maps.Keys(out)), nil
+}
+
+func (p *GoverterProject) GetProjectPath() string {
+	return p.ProjectPath
 }
 
 func (p *GoverterProject) GetRelativePath() string {
