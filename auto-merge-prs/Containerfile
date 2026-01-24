@@ -19,9 +19,15 @@ RUN apt update \
   && apt install -y --no-install-recommends curl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-LABEL image.registry=ghcr.io
-LABEL image.name=markormesher/tedium-chore-auto-merge-prs
-
 COPY --from=builder /app/build/main /usr/local/bin/
 
 CMD ["/usr/local/bin/main"]
+
+LABEL image.name=markormesher/tedium-chore-auto-merge-prs
+LABEL image.registry=ghcr.io
+LABEL org.opencontainers.image.description=""
+LABEL org.opencontainers.image.documentation=""
+LABEL org.opencontainers.image.title="tedium-chores"
+LABEL org.opencontainers.image.url="https://github.com/markormesher/tedium-chores"
+LABEL org.opencontainers.image.vendor=""
+LABEL org.opencontainers.image.version=""

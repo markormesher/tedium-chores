@@ -15,9 +15,15 @@ RUN go build -o ./build/main ./cmd/...
 FROM docker.io/debian:13.3-slim@sha256:77ba0164de17b88dd0bf6cdc8f65569e6e5fa6cd256562998b62553134a00ef0
 WORKDIR /app
 
-LABEL image.registry=ghcr.io
-LABEL image.name=markormesher/tedium-chore-update-image-labels
-
 COPY --from=builder /app/build/main /usr/local/bin/
 
 CMD ["/usr/local/bin/main"]
+
+LABEL image.name=markormesher/tedium-chore-update-image-labels
+LABEL image.registry=ghcr.io
+LABEL org.opencontainers.image.description=""
+LABEL org.opencontainers.image.documentation=""
+LABEL org.opencontainers.image.title="tedium-chores"
+LABEL org.opencontainers.image.url="https://github.com/markormesher/tedium-chores"
+LABEL org.opencontainers.image.vendor=""
+LABEL org.opencontainers.image.version=""
