@@ -10,6 +10,7 @@ import (
 )
 
 type SQLCProject struct {
+	ProjectPath  string
 	RelativePath string
 }
 
@@ -32,11 +33,16 @@ func FindSQLCProjects(projectPath string) ([]Project, error) {
 
 	for _, p := range sqlcGenPaths {
 		output = append(output, &SQLCProject{
+			ProjectPath:  path.Join(projectPath, path.Dir(p)),
 			RelativePath: path.Dir(p),
 		})
 	}
 
 	return output, nil
+}
+
+func (p *SQLCProject) GetProjectPath() string {
+	return p.ProjectPath
 }
 
 func (p *SQLCProject) GetRelativePath() string {

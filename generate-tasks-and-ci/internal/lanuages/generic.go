@@ -10,6 +10,7 @@ var l = log.Logger
 type Project interface {
 	AddTasks(taskFile *task.TaskFile) error
 	GetRelativePath() string
+	GetProjectPath() string
 }
 
 type TaskAdder func(taskFile *task.TaskFile) error

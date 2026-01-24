@@ -10,6 +10,7 @@ import (
 )
 
 type ContainerImageProject struct {
+	ProjectPath       string
 	RelativePath      string
 	ContainerFileName string
 }
@@ -34,12 +35,17 @@ func FindContainerImageProjects(projectPath string) ([]Project, error) {
 
 	for _, p := range imgManifestPaths {
 		output = append(output, &ContainerImageProject{
+			ProjectPath:       path.Join(projectPath, path.Dir(p)),
 			RelativePath:      path.Dir(p),
 			ContainerFileName: path.Base(p),
 		})
 	}
 
 	return output, nil
+}
+
+func (p *ContainerImageProject) GetProjectPath() string {
+	return p.ProjectPath
 }
 
 func (p *ContainerImageProject) GetRelativePath() string {

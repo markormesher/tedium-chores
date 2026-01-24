@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -15,19 +16,20 @@ var l = slog.New(jsonHandler)
 
 var rootPath = "/tedium/repo"
 
-var labels = map[string]string{
-	// labels we will try to set later
-	"org.opencontainers.image.url":   "",
-	"org.opencontainers.image.title": "",
-
-	// remove common labels inherited from base images
-	"org.opencontainers.image.vendor":        "",
-	"org.opencontainers.image.description":   "",
-	"org.opencontainers.image.version":       "",
-	"org.opencontainers.image.documentation": "",
-}
-
 func main() {
+	// default labels - all empty
+	labels := map[string]string{
+		// labels we will try to set later
+		"org.opencontainers.image.url":   "",
+		"org.opencontainers.image.title": "",
+
+		// common inherited to remove from base images
+		"org.opencontainers.image.vendor":        "",
+		"org.opencontainers.image.description":   "",
+		"org.opencontainers.image.version":       "",
+		"org.opencontainers.image.documentation": "",
+	}
+
 	// set labels from env if possible
 	repoOwner := os.Getenv("TEDIUM_REPO_OWNER")
 	repoName := os.Getenv("TEDIUM_REPO_NAME")
@@ -37,6 +39,7 @@ func main() {
 		labels["org.opencontainers.image.url"] = fmt.Sprintf("https://%s/%s/%s", repoDomain, repoOwner, repoName)
 	}
 
+	// find files to update
 	err := fs.WalkDir(os.DirFS(rootPath), ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			l.Error("error finding containerfiles", "error", err)
@@ -45,7 +48,7 @@ func main() {
 
 		if d.Name() == "Containerfile" || d.Name() == "Dockerfile" {
 			fullPath := filepath.Join(rootPath, path)
-			err := processFile(fullPath)
+			err := processFile(fullPath, labels)
 			if err != nil {
 				l.Error("error processing file", "path", fullPath, "error", err)
 				os.Exit(1)
@@ -61,7 +64,7 @@ func main() {
 	}
 }
 
-func processFile(path string) error {
+func processFile(path string, labels map[string]string) error {
 	l.Info("processing file", "file", path)
 
 	// open the file and read it into lines
@@ -77,7 +80,6 @@ func processFile(path string) error {
 	}()
 
 	lines := []string{}
-
 	scanner := bufio.NewScanner(containerFile)
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
@@ -87,16 +89,8 @@ func processFile(path string) error {
 		return fmt.Errorf("error reading file: %w", err)
 	}
 
-	// apply operations
-	lines = moveLabelsToEnd(lines)
-
-	for key, value := range labels {
-		lines = setLabel(lines, key, value)
-	}
-
-	lines = removeExtraBlanks(lines)
-
-	// re-write the file
+	// process the actual lines
+	lines = processLines(lines, labels)
 	output := strings.Join(lines, "\n")
 	err = os.WriteFile(path, []byte(output), os.ModePerm)
 	if err != nil {
@@ -106,73 +100,75 @@ func processFile(path string) error {
 	return nil
 }
 
-func moveLabelsToEnd(lines []string) []string {
-	// if the last line isn't already a label, add a blank line
-	if !strings.HasPrefix(strings.ToLower(lines[len(lines)-1]), "label") {
-		lines = append(lines, "")
-	}
-
-	// track which line numbers contain labels that belong to the final layer
-	finalLayerLabelLines := []int{}
-	for i, line := range lines {
-		if strings.HasPrefix(strings.ToLower(line), "label") {
-			finalLayerLabelLines = append(finalLayerLabelLines, i)
-		} else if strings.HasPrefix(strings.ToLower(line), "from") {
-			finalLayerLabelLines = []int{}
+func processLines(lines []string, labels map[string]string) []string {
+	// separate final-stage lines from any earlier stages
+	finalStageLines := []string{}
+	nonFinalStageLines := []string{}
+	for _, line := range lines {
+		if strings.HasPrefix(strings.ToLower(line), "from ") {
+			nonFinalStageLines = append(nonFinalStageLines, finalStageLines...)
+			finalStageLines = []string{line}
+		} else {
+			finalStageLines = append(finalStageLines, line)
 		}
 	}
 
-	// move all the labels to the end (if they were already, this is a no-op)
-	linesMoved := 0
-	for _, idx := range finalLayerLabelLines {
-		moveIdx := idx - linesMoved
-		movedLine := lines[moveIdx]
-		lines = append(lines[0:moveIdx], lines[moveIdx+1:]...)
-		lines = append(lines, movedLine)
-		linesMoved++
-	}
-
-	return lines
-}
-
-func setLabel(lines []string, key string, value string) []string {
-	// we already have this label just update the value
-	for i, line := range lines {
-		if strings.HasPrefix(line, "LABEL") {
-			if strings.Contains(line, key) {
-				lines[i] = fmt.Sprintf("LABEL %s=%q", key, value)
-				return lines
-			}
+	// separate labels in the final stage
+	labelLines := []string{}
+	nonLabelLines := []string{}
+	for _, line := range finalStageLines {
+		if strings.HasPrefix(strings.ToLower(line), "label ") {
+			labelLines = append(labelLines, line)
+		} else {
+			nonLabelLines = append(nonLabelLines, line)
 		}
 	}
 
-	// we didn't update the value - so insert it
-	if !strings.HasPrefix(strings.ToLower(lines[len(lines)-1]), "label") {
-		lines = append(lines, "")
+	// capitalise "label" statements
+	for i, line := range labelLines {
+		labelLines[i] = "LABEL" + line[5:]
 	}
-	lines = append(lines, fmt.Sprintf("LABEL %s=%q", key, value))
+
+	// insert or update labels
+	for key, value := range labels {
+		idx := slices.IndexFunc(labelLines, func(line string) bool {
+			return strings.HasPrefix(line, fmt.Sprintf("LABEL %s", key))
+		})
+		if idx < 0 {
+			labelLines = append(labelLines, fmt.Sprintf("LABEL %s=%q", key, value))
+		} else {
+			labelLines[idx] = fmt.Sprintf("LABEL %s=%q", key, value)
+		}
+	}
+
+	slices.Sort(labelLines)
+
+	// reassemble final stage
+	nonLabelLines = append(nonLabelLines, "")
+	finalStageLines = append(nonLabelLines, labelLines...)
+
+	// reassemble file
+	lines = append(nonFinalStageLines, finalStageLines...)
+	lines = removeExtraBlanks(lines)
 
 	return lines
 }
 
 func removeExtraBlanks(lines []string) []string {
-	linesToTrim := []int{}
-	lastLineWasBlank := false
+	newLines := []string{}
 
-	for i, line := range lines {
-		if lastLineWasBlank && line == "" {
-			linesToTrim = append(linesToTrim, i)
+	// condense consecuitive blank lines
+	for _, line := range lines {
+		if len(newLines) > 0 && newLines[len(newLines)-1] == "" && line == "" {
+			continue
 		}
-
-		lastLineWasBlank = line == ""
+		newLines = append(newLines, line)
 	}
 
-	trimmedLines := 0
-	for _, idx := range linesToTrim {
-		trimIdx := idx - trimmedLines
-		lines = append(lines[0:trimIdx], lines[trimIdx+1:]...)
-		trimmedLines++
+	// remove trailing blanks
+	if newLines[len(newLines)-1] == "" {
+		newLines = newLines[0 : len(newLines)-1]
 	}
 
-	return lines
+	return newLines
 }

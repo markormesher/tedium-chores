@@ -103,6 +103,21 @@ jobs:
             export GOPATH=/.go
             export GOCACHE=/.gocache
             ./task lint-go
+  test-go:
+    docker:
+      - image: docker.io/golang:1.25.6@sha256:ce63a16e0f7063787ebb4eb28e72d477b00b4726f79874b3205a965ffd797ab2
+    steps:
+      - attach_workspace:
+          at: .
+      - restore_cache:
+          keys:
+            - deps-go-v7-{{ checksum ".task-meta-cachekey-go" }}
+            - deps-go-v7-
+      - run:
+          command: |-
+            export GOPATH=/.go
+            export GOCACHE=/.gocache
+            ./task test-go
 workflows:
   version: 2
   main:
@@ -147,12 +162,21 @@ workflows:
           filters:
             tags:
               only: /.*/
+      - test-go:
+          requires:
+            - checkout
+            - deps-go
+            - fetch-task
+          filters:
+            tags:
+              only: /.*/
       - imgbuild-imgpush:
           requires:
             - checkout
             - fetch-task
             - imgrefs
             - lint-go
+            - test-go
           filters:
             tags:
               only: /.*/
@@ -162,6 +186,7 @@ workflows:
             - imgbuild-imgpush
             - imgrefs
             - lint-go
+            - test-go
           filters:
             tags:
               only: /.*/

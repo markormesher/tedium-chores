@@ -998,3 +998,13 @@ tasks:
     dir: '{{.ROOT_DIR}}/update-image-labels'
     cmds:
       - cmd: gofmt -s -w .
+  test:
+    cmds:
+      - task: test-go-updateimagelabels
+  test-go:
+    cmds:
+      - task: test-go-updateimagelabels
+  test-go-updateimagelabels:
+    dir: '{{.ROOT_DIR}}/update-image-labels'
+    cmds:
+      - cmd: go test ./...
