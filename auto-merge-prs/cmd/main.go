@@ -48,7 +48,12 @@ PRLoop:
 		l.Info("considering PR", "title", pr.Title)
 
 		if !pr.hasLabel("automerge") {
-			l.Info("skipping PR, no automerge label", "title", pr.Title)
+			l.Info("skipping PR, no 'automerge' label", "title", pr.Title)
+			continue
+		}
+
+		if pr.hasLabel("do not merge") {
+			l.Info("skipping PR, found 'do not merge' label", "title", pr.Title)
 			continue
 		}
 
