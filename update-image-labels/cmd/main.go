@@ -149,6 +149,7 @@ func processLines(lines []string, labels map[string]string) []string {
 
 	// reassemble file
 	lines = append(nonFinalStageLines, finalStageLines...)
+	lines = append(lines, "")
 	lines = removeExtraBlanks(lines)
 
 	return lines
@@ -163,11 +164,6 @@ func removeExtraBlanks(lines []string) []string {
 			continue
 		}
 		newLines = append(newLines, line)
-	}
-
-	// remove trailing blanks
-	if newLines[len(newLines)-1] == "" {
-		newLines = newLines[0 : len(newLines)-1]
 	}
 
 	return newLines
