@@ -82,7 +82,7 @@ else
   exit 1
 fi
 
-export BUILDX_GIT_INFO=1
+export BUILDX_GIT_INFO=0
 `
 }
 
