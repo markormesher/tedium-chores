@@ -81,6 +81,8 @@ else
   echo "Cannot find Podman or Docker" >&2
   exit 1
 fi
+
+export BUILDX_GIT_INFO=1
 `
 }
 
