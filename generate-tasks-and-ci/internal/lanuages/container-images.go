@@ -81,6 +81,8 @@ else
   echo "Cannot find Podman or Docker" >&2
   exit 1
 fi
+
+export BUILDX_GIT_INFO=1
 `
 }
 
@@ -159,7 +161,8 @@ func (p *ContainerImageProject) addBuildTask(taskFile *task.TaskFile) error {
 			fmt.Sprintf("imgrefs-%s", util.PathToSafeName(p.RelativePath)),
 		},
 		Commands: []task.Command{
-			{Command: `
+			{
+				Command: `
 set -euo pipefail
 
 ` + p.builderSetup() + `
