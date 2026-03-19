@@ -161,8 +161,7 @@ func (p *ContainerImageProject) addBuildTask(taskFile *task.TaskFile) error {
 			fmt.Sprintf("imgrefs-%s", util.PathToSafeName(p.RelativePath)),
 		},
 		Commands: []task.Command{
-			{
-				Command: `
+			{Command: `
 set -euo pipefail
 
 ` + p.builderSetup() + `
