@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"fmt"
+	"log/slog"
 	"os"
 	"path"
 	"regexp"
@@ -36,12 +37,12 @@ func updateCIConfig(projectPath string, ciType string) {
 
 	projectPathExists, err := util.DirExists(projectPath)
 	if err != nil {
-		l.Error("error checking whether project path exists", "error", err)
+		slog.Error("error checking whether project path exists", "error", err)
 		os.Exit(1)
 	}
 
 	if !projectPathExists {
-		l.Error("project path does not exist", "path", projectPath)
+		slog.Error("project path does not exist", "path", projectPath)
 		os.Exit(1)
 	}
 
@@ -51,13 +52,13 @@ func updateCIConfig(projectPath string, ciType string) {
 		} else if circleFileExists, _ := util.FileExists(path.Join(projectPath, ci.CircleCiFilePath)); circleFileExists {
 			ciType = "circle"
 		} else {
-			l.Error("unable to determine CI type automatically")
+			slog.Error("unable to determine CI type automatically")
 			os.Exit(1)
 		}
 	}
 
 	if ciType != "drone" && ciType != "circle" {
-		l.Error("Unsupported CI type", "ciType", ciType)
+		slog.Error("Unsupported CI type", "ciType", ciType)
 		os.Exit(1)
 	}
 
@@ -74,11 +75,11 @@ func updateCIConfig(projectPath string, ciType string) {
 	taskfilePath := path.Join(projectPath, "taskfile.yml")
 	taskfile, err := task.LoadTaskFile(taskfilePath)
 	if err != nil {
-		l.Error("error loading Taskfile", "error", err)
+		slog.Error("error loading Taskfile", "error", err)
 		os.Exit(1)
 	}
 	if taskfile == nil {
-		l.Warn("no taskfile in this repo - skipping")
+		slog.Warn("no taskfile in this repo - skipping")
 		os.Exit(0)
 	}
 
@@ -96,7 +97,7 @@ func updateCIConfig(projectPath string, ciType string) {
 	case "drone":
 		droneConfig, err := ci.LoadDroneConfigIfPresent(outputPath)
 		if err != nil {
-			l.Warn("Error reading existing Drone config - continuing without it", "error", err)
+			slog.Warn("Error reading existing Drone config - continuing without it", "error", err)
 		}
 		if droneConfig != nil {
 			imageSet = extractImagesFromDroneConfig(*droneConfig)
@@ -105,7 +106,7 @@ func updateCIConfig(projectPath string, ciType string) {
 	case "circle":
 		circleConfig, err := ci.LoadCircleConfigIfPresent(outputPath)
 		if err != nil {
-			l.Warn("Error reading existing Circle config - continuing without it", "error", err)
+			slog.Warn("Error reading existing Circle config - continuing without it", "error", err)
 		}
 		if circleConfig != nil {
 			imageSet = extractImagesFromCircleConfig(*circleConfig)
@@ -235,7 +236,7 @@ func updateCIConfig(projectPath string, ciType string) {
 			lang := strings.Split(name, "-")[1]
 			image, err := getImageForLanguageTask(imageSet, name)
 			if err != nil {
-				l.Error("unable to determine image for step", "error", err)
+				slog.Error("unable to determine image for step", "error", err)
 				os.Exit(1)
 			}
 
@@ -372,7 +373,7 @@ func updateCIConfig(projectPath string, ciType string) {
 		}
 
 		if sizeBefore == len(sortedSteps) {
-			l.Error("Detected a loop in step dependencies")
+			slog.Error("Detected a loop in step dependencies")
 			os.Exit(1)
 		}
 	}
@@ -391,13 +392,13 @@ func updateCIConfig(projectPath string, ciType string) {
 	encoder.SetIndent(2)
 	err = encoder.Encode(output)
 	if err != nil {
-		l.Error("Couldn't marshall output")
+		slog.Error("Couldn't marshall output")
 		os.Exit(1)
 	}
 
 	handleWriteError := func(err error) {
 		if err != nil {
-			l.Error("Error writing to CI config", "error", err)
+			slog.Error("Error writing to CI config", "error", err)
 			os.Exit(1)
 		}
 	}
