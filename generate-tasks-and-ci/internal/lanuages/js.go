@@ -3,6 +3,7 @@ package lanuages
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path"
 	"regexp"
@@ -66,7 +67,7 @@ func FindJSProjects(projectPath string) ([]Project, error) {
 		// supporting a new package manager? don't forget to update other switch statements
 
 		default:
-			l.Warn("skipping JS/TS project with unsupported package manager", "packageManager", config.PackageManager)
+			slog.Warn("skipping JS/TS project with unsupported package manager", "packageManager", config.PackageManager)
 			continue
 		}
 
