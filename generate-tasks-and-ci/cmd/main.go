@@ -2,13 +2,10 @@ package main
 
 import (
 	"flag"
+	"log/slog"
 	"os"
 	"strings"
-
-	"github.com/markormesher/tedium-chores/generate-tasks-and-ci/internal/log"
 )
-
-var l = log.Logger
 
 func main() {
 	// read config and validate it
@@ -22,12 +19,12 @@ func main() {
 
 	stat, err := os.Stat(projectPath)
 	if err != nil {
-		l.Error("Error stating project path", "error", err)
+		slog.Error("Error stating project path", "error", err)
 		os.Exit(1)
 	}
 
 	if !stat.IsDir() {
-		l.Error("Project path doesn't exist or isn't a directory")
+		slog.Error("Project path doesn't exist or isn't a directory")
 		os.Exit(1)
 	}
 
