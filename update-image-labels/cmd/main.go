@@ -20,14 +20,14 @@ func main() {
 	// default labels - all empty
 	labels := map[string]string{
 		// labels we will try to set later
-		"org.opencontainers.image.url":   "",
 		"org.opencontainers.image.title": "",
 
 		// common inherited to remove from base images
-		"org.opencontainers.image.vendor":        "",
 		"org.opencontainers.image.description":   "",
-		"org.opencontainers.image.version":       "",
 		"org.opencontainers.image.documentation": "",
+		"org.opencontainers.image.url":           "",
+		"org.opencontainers.image.vendor":        "",
+		"org.opencontainers.image.version":       "",
 	}
 
 	// set labels from env if possible
@@ -36,7 +36,6 @@ func main() {
 	repoDomain := os.Getenv("TEDIUM_PLATFORM_DOMAIN")
 	if repoOwner != "" && repoName != "" && repoDomain != "" {
 		labels["org.opencontainers.image.title"] = repoName
-		labels["org.opencontainers.image.url"] = fmt.Sprintf("https://%s/%s/%s", repoDomain, repoOwner, repoName)
 	}
 
 	// find files to update
