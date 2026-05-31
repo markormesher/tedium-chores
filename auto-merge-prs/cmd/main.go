@@ -13,9 +13,6 @@ import (
 	"time"
 )
 
-var jsonHandler = slog.NewJSONHandler(os.Stdout, nil)
-var l = slog.New(jsonHandler)
-
 var (
 	apiBase   = os.Getenv("TEDIUM_PLATFORM_API_BASE_URL")
 	apiToken  = os.Getenv("TEDIUM_PLATFORM_TOKEN")
@@ -31,13 +28,13 @@ var (
 
 func main() {
 	if apiType != "gitea" && apiType != "github" {
-		l.Error("unsupported API type", "type", apiType)
+		slog.Error("unsupported API type", "type", apiType)
 		os.Exit(1)
 	}
 
 	prs, err := getPRs()
 	if err != nil {
-		l.Error("error getting PRs", "error", err)
+		slog.Error("error getting PRs", "error", err)
 		os.Exit(1)
 	}
 
@@ -45,25 +42,25 @@ func main() {
 
 PRLoop:
 	for _, pr := range prs {
-		l.Info("considering PR", "title", pr.Title)
+		slog.Info("considering PR", "title", pr.Title)
 
 		if !pr.hasLabel("automerge") {
-			l.Info("skipping PR, no 'automerge' label", "title", pr.Title)
+			slog.Info("skipping PR, no 'automerge' label", "title", pr.Title)
 			continue
 		}
 
 		if pr.hasLabel("do not merge") {
-			l.Info("skipping PR, found 'do not merge' label", "title", pr.Title)
+			slog.Info("skipping PR, found 'do not merge' label", "title", pr.Title)
 			continue
 		}
 
 		// wait for it to become mergeable
 		for range maxMergeableRetries {
-			l.Info("waiting for PR to become mergeable")
+			slog.Info("waiting for PR to become mergeable")
 			time.Sleep(mergeableRetryDelay)
 			pr, err = getPR(pr.Number)
 			if err != nil {
-				l.Info("error loading this PR; will continue with others", "error", err)
+				slog.Info("error loading this PR; will continue with others", "error", err)
 				anyFailed = true
 				continue PRLoop
 			}
@@ -74,47 +71,47 @@ PRLoop:
 		}
 
 		if !pr.Mergeable {
-			l.Info("PR is not mergeable")
+			slog.Info("PR is not mergeable")
 			continue PRLoop
 		}
 
 		branchProtected, requiredContexts, err := getBranchProtection(pr)
 		if err != nil {
-			l.Info("error checking branch protection; will continue with others", "error", err)
+			slog.Info("error checking branch protection; will continue with others", "error", err)
 			anyFailed = true
 			continue PRLoop
 		}
 
 		passingContexts, err := getPassingContexts(pr)
 		if err != nil {
-			l.Info("error getting passing contexts; will continue with others", "error", err)
+			slog.Info("error getting passing contexts; will continue with others", "error", err)
 			anyFailed = true
 			continue PRLoop
 		}
 
 		doMerge, reason := shouldMerge(branchProtected, requiredContexts, passingContexts)
 		if !doMerge {
-			l.Info("PR cannot be merged", "reason", reason)
+			slog.Info("PR cannot be merged", "reason", reason)
 			continue
 		}
 
-		l.Info("attempting to merge PR...")
+		slog.Info("attempting to merge PR...")
 		err = mergePR(pr)
 		if err != nil {
-			l.Info("error merging PR; will continue with others", "error", err)
+			slog.Info("error merging PR; will continue with others", "error", err)
 			anyFailed = true
 			continue PRLoop
 		}
-		l.Info("merged")
+		slog.Info("merged")
 
-		l.Info("deleting branch...")
+		slog.Info("deleting branch...")
 		err = deleteBranch(pr)
 		if err != nil {
-			l.Info("error deleting branch; will continue with others", "error", err)
+			slog.Info("error deleting branch; will continue with others", "error", err)
 			anyFailed = true
 			continue PRLoop
 		}
-		l.Info("deleted")
+		slog.Info("deleted")
 
 		// pause to make sure mergability of other PRs is re-evaluated by the platform
 		time.Sleep(time.Second * 30)
@@ -315,13 +312,13 @@ func doRequest(method string, url string, body io.Reader) ([]byte, int, error) {
 	defer func() {
 		err := resp.Body.Close()
 		if err != nil {
-			l.Error("error closing request body", "error", err)
+			slog.Error("error closing request body", "error", err)
 		}
 	}()
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		l.Error("error reading request body", "error", err)
+		slog.Error("error reading request body", "error", err)
 		return nil, 0, err
 	}
 

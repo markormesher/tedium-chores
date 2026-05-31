@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path"
 	"regexp"
@@ -42,7 +43,7 @@ func updateTaskfile(projectPath string) {
 	for _, finder := range projectFinders {
 		projects, err := finder(projectPath)
 		if err != nil {
-			l.Error("error finding projects", "error", err)
+			slog.Error("error finding projects", "error", err)
 			os.Exit(1)
 		}
 		allProjects = append(allProjects, projects...)
@@ -51,13 +52,13 @@ func updateTaskfile(projectPath string) {
 	for _, p := range allProjects {
 		err := updateGitignore(p.GetProjectPath())
 		if err != nil {
-			l.Error("error updating .gitignore", "error", err)
+			slog.Error("error updating .gitignore", "error", err)
 			os.Exit(1)
 		}
 
 		err = p.AddTasks(&taskFile)
 		if err != nil {
-			l.Error("error adding tasks", "error", err)
+			slog.Error("error adding tasks", "error", err)
 			os.Exit(1)
 		}
 	}
@@ -131,13 +132,13 @@ func updateTaskfile(projectPath string) {
 	encoder.SetIndent(2)
 	err := encoder.Encode(taskFile)
 	if err != nil {
-		l.Error("Couldn't marshall output")
+		slog.Error("Couldn't marshall output")
 		os.Exit(1)
 	}
 
 	handleWriteError := func(err error) {
 		if err != nil {
-			l.Error("Error writing to taskfile", "error", err)
+			slog.Error("Error writing to taskfile", "error", err)
 			os.Exit(1)
 		}
 	}

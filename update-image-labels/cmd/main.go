@@ -11,9 +11,6 @@ import (
 	"strings"
 )
 
-var jsonHandler = slog.NewJSONHandler(os.Stdout, nil)
-var l = slog.New(jsonHandler)
-
 var rootPath = "/tedium/repo"
 
 func main() {
@@ -41,7 +38,7 @@ func main() {
 	// find files to update
 	err := fs.WalkDir(os.DirFS(rootPath), ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			l.Error("error finding containerfiles", "error", err)
+			slog.Error("error finding containerfiles", "error", err)
 			os.Exit(1)
 		}
 
@@ -49,7 +46,7 @@ func main() {
 			fullPath := filepath.Join(rootPath, path)
 			err := processFile(fullPath, labels)
 			if err != nil {
-				l.Error("error processing file", "path", fullPath, "error", err)
+				slog.Error("error processing file", "path", fullPath, "error", err)
 				os.Exit(1)
 			}
 		}
@@ -58,13 +55,13 @@ func main() {
 	})
 
 	if err != nil {
-		l.Error("error finding containerfiles", "error", err)
+		slog.Error("error finding containerfiles", "error", err)
 		os.Exit(1)
 	}
 }
 
 func processFile(path string, labels map[string]string) error {
-	l.Info("processing file", "file", path)
+	slog.Info("processing file", "file", path)
 
 	// open the file and read it into lines
 	containerFile, err := os.Open(path)
@@ -74,7 +71,7 @@ func processFile(path string, labels map[string]string) error {
 	defer func() {
 		err := containerFile.Close()
 		if err != nil {
-			l.Error("error closing file", "error", err)
+			slog.Error("error closing file", "error", err)
 		}
 	}()
 
