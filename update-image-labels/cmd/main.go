@@ -28,10 +28,8 @@ func main() {
 	}
 
 	// set labels from env if possible
-	repoOwner := os.Getenv("TEDIUM_REPO_OWNER")
 	repoName := os.Getenv("TEDIUM_REPO_NAME")
-	repoDomain := os.Getenv("TEDIUM_PLATFORM_DOMAIN")
-	if repoOwner != "" && repoName != "" && repoDomain != "" {
+	if repoName != "" {
 		labels["org.opencontainers.image.title"] = repoName
 	}
 
