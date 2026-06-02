@@ -4,7 +4,7 @@ version: "2.1"
 jobs:
   cachekey:
     docker:
-      - image: cimg/base:2026.06
+      - image: cimg/base:2026.06@sha256:deb111cac98e50249a996a413313b8e3d381f4ae2e7059b7e27dce02f61d744c
     steps:
       - attach_workspace:
           at: .
@@ -16,7 +16,7 @@ jobs:
             - ./.task-meta-cachekey*
   checkout:
     docker:
-      - image: cimg/base:2026.06
+      - image: cimg/base:2026.06@sha256:deb111cac98e50249a996a413313b8e3d381f4ae2e7059b7e27dce02f61d744c
     steps:
       - checkout:
           path: .
@@ -26,7 +26,7 @@ jobs:
             - .
   ci-all:
     docker:
-      - image: cimg/base:2026.06
+      - image: cimg/base:2026.06@sha256:deb111cac98e50249a996a413313b8e3d381f4ae2e7059b7e27dce02f61d744c
     steps:
       - run:
           command: echo "Done"
@@ -52,7 +52,7 @@ jobs:
             - /.gocache
   fetch-task:
     docker:
-      - image: ghcr.io/markormesher/task-fetcher:v0.6.14@sha256:8765e5e5da8498074a2b7d2e2a083c6e7ce7859659053178178e04c32299997d
+      - image: ghcr.io/markormesher/task-fetcher:v0.6.15@sha256:443192c5b86ba6ae94ee361b05fa9ed2bd10ce4857d9dcc7f9397c10a3aa6c21
     steps:
       - attach_workspace:
           at: .
@@ -64,7 +64,7 @@ jobs:
             - ./task
   imgbuild-imgpush:
     docker:
-      - image: cimg/base:2026.06
+      - image: cimg/base:2026.06@sha256:deb111cac98e50249a996a413313b8e3d381f4ae2e7059b7e27dce02f61d744c
     steps:
       - attach_workspace:
           at: .
