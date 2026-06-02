@@ -9,7 +9,7 @@ import (
 	"net/http"
 	neturl "net/url"
 	"os"
-	"slices"
+	"strings"
 	"time"
 )
 
@@ -290,13 +290,68 @@ func shouldMerge(protected bool, requiredContexts []string, passingContexts []st
 		return false, "target branch is protected but does not specify required checks"
 	}
 
-	for _, c := range requiredContexts {
-		if !slices.Contains(passingContexts, c) {
-			return false, fmt.Sprintf("required context '%s' is not satisfied", c)
+	// this could be reduced to slices.ContainsFunc but that is a lot less readable
+	for _, requiredContext := range requiredContexts {
+		passed := false
+		for _, passingContext := range passingContexts {
+			if strMatchWithWildcard(requiredContext, passingContext) {
+				passed = true
+				break
+			}
+		}
+
+		if !passed {
+			return false, fmt.Sprintf("required context '%s' is not satisfied", requiredContext)
 		}
 	}
 
 	return true, "all requirements are met"
+}
+
+func strMatchWithWildcard(pattern string, value string) bool {
+	patternParts := strings.Split(pattern, "*")
+
+	// shortcut: no wildcards
+	if len(patternParts) == 1 {
+		return pattern == value
+	}
+
+	// handle prefix
+	if patternParts[0] != "" {
+		if !strings.HasPrefix(value, patternParts[0]) {
+			return false
+		}
+
+		value = strings.TrimPrefix(value, patternParts[0])
+	}
+
+	// handle suffix
+	last := len(patternParts) - 1
+	if patternParts[last] != "" {
+		if !strings.HasSuffix(value, patternParts[last]) {
+			return false
+		}
+
+		value = strings.TrimSuffix(value, patternParts[last])
+	}
+
+	// check for middle chunks in order
+	for _, part := range patternParts[1:last] {
+		// consecutive wildcards
+		if part == "" {
+			continue
+		}
+
+		idx := strings.Index(value, part)
+		if idx < 0 {
+			return false
+		}
+
+		value = value[idx+len(part):]
+	}
+
+	// fall-through: all parts matched by this point
+	return true
 }
 
 func doRequest(method string, url string, body io.Reader) ([]byte, int, error) {
