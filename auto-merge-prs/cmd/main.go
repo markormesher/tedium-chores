@@ -89,7 +89,7 @@ PRLoop:
 			continue PRLoop
 		}
 
-		doMerge, reason := shouldMerge(branchProtected, requiredContexts, passingContexts)
+		doMerge, reason := shouldMerge(branchProtected, requiredContexts, passingContexts, apiType)
 		if !doMerge {
 			slog.Info("PR cannot be merged", "reason", reason)
 			continue
@@ -281,7 +281,7 @@ func deleteBranch(pr PullRequest) error {
 	return nil
 }
 
-func shouldMerge(protected bool, requiredContexts []string, passingContexts []string) (bool, string) {
+func shouldMerge(protected bool, requiredContexts []string, passingContexts []string, apiType string) (bool, string) {
 	if !protected {
 		return false, "target branch is unprotected"
 	}
@@ -294,7 +294,10 @@ func shouldMerge(protected bool, requiredContexts []string, passingContexts []st
 	for _, requiredContext := range requiredContexts {
 		passed := false
 		for _, passingContext := range passingContexts {
-			if strMatchWithWildcard(requiredContext, passingContext) {
+			if apiType == "gitea" && strMatchWithWildcard(requiredContext, passingContext) {
+				passed = true
+				break
+			} else if apiType == "github" && requiredContext == passingContext {
 				passed = true
 				break
 			}
@@ -306,6 +309,32 @@ func shouldMerge(protected bool, requiredContexts []string, passingContexts []st
 	}
 
 	return true, "all requirements are met"
+}
+
+func doRequest(method string, url string, body io.Reader) ([]byte, int, error) {
+	req, _ := http.NewRequest(method, url, body)
+	req.Header.Set("Authorization", "Bearer "+apiToken)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			slog.Error("error closing request body", "error", err)
+		}
+	}()
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		slog.Error("error reading request body", "error", err)
+		return nil, 0, err
+	}
+
+	return data, resp.StatusCode, nil
 }
 
 func strMatchWithWildcard(pattern string, value string) bool {
@@ -352,30 +381,4 @@ func strMatchWithWildcard(pattern string, value string) bool {
 
 	// fall-through: all parts matched by this point
 	return true
-}
-
-func doRequest(method string, url string, body io.Reader) ([]byte, int, error) {
-	req, _ := http.NewRequest(method, url, body)
-	req.Header.Set("Authorization", "Bearer "+apiToken)
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
-			slog.Error("error closing request body", "error", err)
-		}
-	}()
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		slog.Error("error reading request body", "error", err)
-		return nil, 0, err
-	}
-
-	return data, resp.StatusCode, nil
 }
