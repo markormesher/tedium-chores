@@ -8,8 +8,10 @@ if grep "ci-all" .drone.yml >/dev/null 2>&1; then
   check_name="continuous-integration/drone/push"
 elif grep "ci-all" .circleci/config.yml >/dev/null 2>&1; then
   check_name="ci/circleci: ci-all"
-elif grep "ci-all" .*/workflows/ci.yml >/dev/null 2>&1; then
-  check_name="CI / ci-all*"
+elif grep "ci-all" .forgejo/workflows/ci.yml >/dev/null 2>&1; then
+  check_name="CI / ci-all (*)"
+elif grep "ci-all" .github/workflows/ci.yml >/dev/null 2>&1; then
+  check_name="ci-all"
 fi
 
 if [[ "${check_name}" == "" ]]; then
