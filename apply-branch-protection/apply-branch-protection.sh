@@ -4,9 +4,7 @@ set -euo pipefail
 cd /tedium/repo
 
 check_name=""
-if grep "ci-all" .drone.yml >/dev/null 2>&1; then
-  check_name="continuous-integration/drone/push"
-elif grep "ci-all" .circleci/config.yml >/dev/null 2>&1; then
+if grep "ci-all" .circleci/config.yml >/dev/null 2>&1; then
   check_name="ci/circleci: ci-all"
 elif grep "ci-all" .forgejo/workflows/ci.yml >/dev/null 2>&1; then
   check_name="CI / ci-all (*)"
