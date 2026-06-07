@@ -53,13 +53,13 @@ func updateCIConfig(projectPath string, ciType string) {
 			ciType = "circle"
 		} else {
 			slog.Error("unable to determine CI type automatically")
-			os.Exit(1)
+			return
 		}
 	}
 
 	if ciType != "drone" && ciType != "circle" {
 		slog.Error("Unsupported CI type", "ciType", ciType)
-		os.Exit(1)
+		return
 	}
 
 	// define the output path based on the CI type

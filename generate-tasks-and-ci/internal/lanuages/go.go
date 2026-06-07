@@ -151,8 +151,6 @@ func (p *GoProject) addLintFixTask(taskFile *task.TaskFile) error {
 }
 
 func (p *GoProject) addTestTask(taskFile *task.TaskFile) error {
-	fmt.Println(p.ProjectPath + "...")
-
 	testFiles, err := util.Find(
 		p.ProjectPath,
 		util.FIND_FILES,
@@ -164,8 +162,6 @@ func (p *GoProject) addTestTask(taskFile *task.TaskFile) error {
 	if err != nil {
 		return fmt.Errorf("error checking for Go test files: %w", err)
 	}
-
-	fmt.Println(testFiles)
 
 	if len(testFiles) == 0 {
 		return nil
