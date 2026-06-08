@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd ~/public-dev/tfl-to-mqtt/
+cd /tedium/repo
 
 if [[ -f README.md ]] && [[ ! -d .circleci ]]; then
   sed -i '/CircleCI/d' README.md
