@@ -6,7 +6,7 @@ jobs:
   check-go:
     runs-on: ubuntu-latest
     container:
-      image: docker.io/golang:1.26.5
+      image: docker.io/golang:1.26.0
     steps:
       - uses: markormesher/ci-resources/setup@v0.5.0
       - run: ./task deps-go
@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs:
-      - check-go
       - img-build-push
+      - check-go
     container:
       image: docker.io/busybox:1.37.0
     steps:

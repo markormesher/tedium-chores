@@ -350,7 +350,7 @@ func (s *ResourceSet) populateMissingResources(privateGitDomain string) {
 	}
 
 	if s.goStepImage == "" {
-		s.goStepImage = "docker.io/golang:1.26.5"
+		s.goStepImage = "docker.io/golang:1.26.0"
 	}
 
 	if s.imgStepImage == "" || !strings.Contains(s.imgStepImage, "-immutable") {
