@@ -64,7 +64,7 @@ func updateTaskfile(projectPath string) {
 	}
 
 	// collect names of layer-3 tasks that will be exposed
-	layer3Names := make([]string, 0)
+	layer3Names := []string{}
 	for name, task := range taskFile.Tasks {
 		if !task.Internal {
 			layer3Names = append(layer3Names, name)

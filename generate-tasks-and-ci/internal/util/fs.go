@@ -16,7 +16,7 @@ var (
 func Find(projectPath string, targets int, patterns []*regexp.Regexp, excludePatterns []*regexp.Regexp) ([]string, error) {
 	findFiles := targets&FIND_FILES != 0
 	findDirs := targets&FIND_DIRS != 0
-	matches := make([]string, 0)
+	matches := []string{}
 
 	projectFs := os.DirFS(projectPath)
 	err := fs.WalkDir(projectFs, ".", func(path string, d fs.DirEntry, err error) error {

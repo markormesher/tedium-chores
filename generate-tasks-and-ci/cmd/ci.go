@@ -18,17 +18,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// ImageSet is a utility type to store the container image references used for various steps.
-type ImageSet struct {
-	ciResourcesAction    string
-	ciResourcesActionTag string
-
+// ResourceSet is a utility type to store the container image references used for various steps.
+type ResourceSet struct {
 	bufStepImage  string
 	goStepImage   string
 	imgStepImage  string
 	jsStepImage   string
 	sqlcStepImage string
 	utilStepImage string
+
+	ciResourcesAction    string
+	ciResourcesActionTag string
 }
 
 func updateCIConfig(projectPath string) {
@@ -74,16 +74,16 @@ func updateCIConfig(projectPath string) {
 		}
 	}
 
-	// extract image versions from existing CI files if possible
-	imageSet := ImageSet{}
+	// extract resource versions from existing CI files if possible
+	resourceSet := ResourceSet{}
 	oldConfig, oldConfigRaw, err := ci.LoadActionsConfigIfPresent(outputPath)
 	if err != nil {
 		slog.Warn("error reading existing config - continuing without it", "error", err)
 	}
 	if oldConfig != nil {
-		imageSet = extractImagesFromConfig(*oldConfig, oldConfigRaw)
+		resourceSet = extractResourcesFromConfig(*oldConfig, oldConfigRaw)
 	}
-	imageSet.populateMissingImages(privateGitDomain)
+	resourceSet.populateMissingResources(privateGitDomain)
 
 	// init new config
 	newConfig := ci.ActionsConfig{
@@ -97,7 +97,7 @@ func updateCIConfig(projectPath string) {
 		RunsOn: "ubuntu-latest",
 		If:     "always()",
 		Container: ci.ActionsJobContainerConfig{
-			Image: imageSet.utilStepImage,
+			Image: resourceSet.utilStepImage,
 		},
 		Needs: []*regexp.Regexp{
 			regexp.MustCompile(`check\-.*`),
@@ -123,7 +123,7 @@ echo "All jobs passed"
 	for _, lang := range langs {
 		// TODO: consider RUNTIME_ENV and RUNTIME_PACKAGES
 
-		image, err := getImageForLanguageTask(imageSet, lang)
+		image, err := getImageForLanguageTask(resourceSet, lang)
 		if err != nil {
 			slog.Error("unable to get image to language task", "error", err)
 			os.Exit(1)
@@ -135,7 +135,7 @@ echo "All jobs passed"
 				Image: image,
 			},
 			Steps: []ci.ActionsJobStepConfig{
-				{Uses: imageSet.ciResourcesAction},
+				{Uses: resourceSet.ciResourcesAction},
 			},
 		}
 
@@ -170,7 +170,7 @@ echo "All jobs passed"
 				regexp.MustCompile(`^check\-.*`),
 			},
 			Steps: []ci.ActionsJobStepConfig{
-				{Uses: imageSet.ciResourcesAction},
+				{Uses: resourceSet.ciResourcesAction},
 			},
 		}
 
@@ -218,8 +218,8 @@ echo "All jobs passed"
 	}
 	for line := range strings.SplitSeq(outputBuffer.String(), "\n") {
 		// restore renovate actions versions comments if applicable
-		if strings.Contains(line, imageSet.ciResourcesAction) && imageSet.ciResourcesActionTag != "" {
-			line = line + " # " + imageSet.ciResourcesActionTag
+		if strings.Contains(line, resourceSet.ciResourcesAction) && resourceSet.ciResourcesActionTag != "" {
+			line = line + " # " + resourceSet.ciResourcesActionTag
 		}
 
 		outputLines = append(outputLines, line)
@@ -247,7 +247,7 @@ echo "All jobs passed"
 	handleWriteError(err)
 }
 
-func getImageForLanguageTask(imageSet ImageSet, lang string) (string, error) {
+func getImageForLanguageTask(imageSet ResourceSet, lang string) (string, error) {
 	switch lang {
 	case "buf":
 		return imageSet.bufStepImage, nil
@@ -262,8 +262,8 @@ func getImageForLanguageTask(imageSet ImageSet, lang string) (string, error) {
 	}
 }
 
-func extractImagesFromConfig(config ci.ActionsConfig, rawConfig []byte) ImageSet {
-	output := ImageSet{}
+func extractResourcesFromConfig(config ci.ActionsConfig, rawConfig []byte) ResourceSet {
+	output := ResourceSet{}
 
 	for _, job := range config.Jobs {
 		image := job.Container.Image
@@ -310,8 +310,7 @@ func extractImagesFromConfig(config ci.ActionsConfig, rawConfig []byte) ImageSet
 	return output
 }
 
-func (s *ImageSet) populateMissingImages(privateGitDomain string) {
-	// set missing image versions
+func (s *ResourceSet) populateMissingResources(privateGitDomain string) {
 	// these defaults will slowly get out of date, but they will only be applied to first-time ci and Renovate will update them anyway
 
 	if s.ciResourcesAction == "" {
