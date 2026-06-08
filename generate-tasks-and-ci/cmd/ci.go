@@ -45,7 +45,7 @@ func deleteOldCIConfigs(projectPath string) {
 		os.Exit(1)
 	}
 
-	oldPaths := []string{".circle", ".drone.yml"}
+	oldPaths := []string{".circleci", ".drone.yml"}
 	for _, p := range oldPaths {
 		err := os.RemoveAll(path.Join(projectPath, p))
 		if err != nil {
