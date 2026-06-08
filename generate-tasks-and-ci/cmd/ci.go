@@ -130,7 +130,7 @@ func updateCIConfig(projectPath string) {
 		Steps: []ci.ActionsJobStepConfig{
 			{
 				Run: `
-results=$(grep '"result":' <<<'${{ toJson(needs) }}')
+results=$(echo '${{ toJson(needs) }}' | (grep '"result"' || echo))
 if echo "$results" | grep -q "failure\|cancelled\|skipped"; then
   echo "One or more jobs failed, were cancelled, or were skipped" >&2
   exit 1
@@ -339,9 +339,9 @@ func (s *ResourceSet) populateMissingResources(privateGitDomain string) {
 
 	if s.ciResourcesAction == "" {
 		if privateGitDomain == "" {
-			s.ciResourcesAction = "markormesher/ci-resources/setup@v0.5.0"
+			s.ciResourcesAction = "markormesher/ci-resources/setup@v0.6.0"
 		} else {
-			s.ciResourcesAction = fmt.Sprintf("https://%s/mormesher/ci-resources/setup@v0.5.0", privateGitDomain)
+			s.ciResourcesAction = fmt.Sprintf("https://%s/mormesher/ci-resources/setup@v0.6.0", privateGitDomain)
 		}
 	}
 

@@ -8,7 +8,7 @@ jobs:
     container:
       image: docker.io/golang:1.26.0
     steps:
-      - uses: markormesher/ci-resources/setup@v0.5.0
+      - uses: markormesher/ci-resources/setup@v0.6.0
       - run: ./task deps-go
       - run: ./task lint-go
       - run: ./task test-go
@@ -22,7 +22,7 @@ jobs:
       image: docker.io/busybox:1.37.0
     steps:
       - run: |2
-          results=$(grep '"result":' <<<'${{ toJson(needs) }}')
+          results=$(echo '${{ toJson(needs) }}' | (grep '"result"' || echo))
           if echo "$results" | grep -q "failure\|cancelled\|skipped"; then
             echo "One or more jobs failed, were cancelled, or were skipped" >&2
             exit 1
@@ -33,7 +33,7 @@ jobs:
     needs:
       - check-go
     steps:
-      - uses: markormesher/ci-resources/setup@v0.5.0
+      - uses: markormesher/ci-resources/setup@v0.6.0
       - run: buildah login ghcr.io -u "${{ github.actor }}" -p "${{ github.token }}"
       - run: ./task imgrefs
       - run: ./task imgbuild
