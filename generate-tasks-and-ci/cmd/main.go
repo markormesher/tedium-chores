@@ -10,9 +10,7 @@ import (
 func main() {
 	// read config and validate it
 	var projectPath string
-	var ciType string
 	flag.StringVar(&projectPath, "project", "/tedium/repo", "Project path to target")
-	flag.StringVar(&ciType, "ci-type", "auto", "CI type ('drone' or 'circle'")
 	flag.Parse()
 
 	projectPath = strings.TrimRight(projectPath, "/")
@@ -29,5 +27,6 @@ func main() {
 	}
 
 	updateTaskfile(projectPath)
-	updateCIConfig(projectPath, ciType)
+	updateCIConfig(projectPath)
+	deleteOldCIConfigs(projectPath)
 }

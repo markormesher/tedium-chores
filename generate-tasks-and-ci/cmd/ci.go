@@ -1,15 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
-	"cmp"
 	"fmt"
 	"log/slog"
+	"maps"
 	"os"
 	"path"
 	"regexp"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/markormesher/tedium-chores/generate-tasks-and-ci/internal/ci"
@@ -18,21 +18,20 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const cacheVersion = 7
+// ResourceSet is a utility type to store the container image references used for various steps.
+type ResourceSet struct {
+	bufStepImage  string
+	goStepImage   string
+	imgStepImage  string
+	jsStepImage   string
+	sqlcStepImage string
+	utilStepImage string
 
-// ImageSet is a utility type to store the container image references used for various steps.
-type ImageSet struct {
-	bufStepImage       string
-	fetchTaskStepImage string
-	gitStepImage       string
-	goStepImage        string
-	imgStepImage       string
-	jsStepImage        string
-	sqlcStepImage      string
-	utilStepImage      string
+	ciResourcesAction    string
+	ciResourcesActionTag string
 }
 
-func updateCIConfig(projectPath string, ciType string) {
+func deleteOldCIConfigs(projectPath string) {
 	projectPath = strings.TrimRight(projectPath, "/")
 
 	projectPathExists, err := util.DirExists(projectPath)
@@ -46,29 +45,38 @@ func updateCIConfig(projectPath string, ciType string) {
 		os.Exit(1)
 	}
 
-	if ciType == "auto" {
-		if droneFileExists, _ := util.FileExists(path.Join(projectPath, ci.DroneFilePath)); droneFileExists {
-			ciType = "drone"
-		} else if circleFileExists, _ := util.FileExists(path.Join(projectPath, ci.CircleCiFilePath)); circleFileExists {
-			ciType = "circle"
-		} else {
-			slog.Error("unable to determine CI type automatically")
+	oldPaths := []string{".circleci", ".drone.yml"}
+	for _, p := range oldPaths {
+		err := os.RemoveAll(path.Join(projectPath, p))
+		if err != nil {
+			slog.Error("error deleting old CI config", "path", p, "error", err)
 			os.Exit(1)
 		}
 	}
+}
 
-	if ciType != "drone" && ciType != "circle" {
-		slog.Error("Unsupported CI type", "ciType", ciType)
+func updateCIConfig(projectPath string) {
+	projectPath = strings.TrimRight(projectPath, "/")
+
+	projectPathExists, err := util.DirExists(projectPath)
+	if err != nil {
+		slog.Error("error checking whether project path exists", "error", err)
 		os.Exit(1)
 	}
 
-	// define the output path based on the CI type
+	if !projectPathExists {
+		slog.Error("project path does not exist", "path", projectPath)
+		os.Exit(1)
+	}
+
+	privateGitDomain := os.Getenv("PRIVATE_GIT_DOMAIN")
+
+	// define the output path based on the repo type
 	outputPath := ""
-	switch ciType {
-	case "drone":
-		outputPath = path.Join(projectPath, ci.DroneFilePath)
-	case "circle":
-		outputPath = path.Join(projectPath, ci.CircleCiFilePath)
+	if privateGitDomain == "" {
+		outputPath = path.Join(projectPath, ".github/workflows/ci.yml")
+	} else {
+		outputPath = path.Join(projectPath, ".forgejo/workflows/ci.yml")
 	}
 
 	// read taskfile
@@ -83,322 +91,170 @@ func updateCIConfig(projectPath string, ciType string) {
 		os.Exit(0)
 	}
 
-	taskNames := make([]string, 0)
+	taskNames := []string{}
 	for name, task := range taskfile.Tasks {
 		if !task.Internal {
 			taskNames = append(taskNames, name)
 		}
 	}
 
-	// extract image versions from existing CI files if possible
-	imageSet := ImageSet{}
+	// extract resource versions from existing CI files if possible
+	resourceSet := ResourceSet{}
+	oldConfig, oldConfigRaw, err := ci.LoadActionsConfigIfPresent(outputPath)
+	if err != nil {
+		slog.Warn("error reading existing config - continuing without it", "error", err)
+	}
+	if oldConfig != nil {
+		resourceSet = extractResourcesFromConfig(*oldConfig, oldConfigRaw)
+	}
+	resourceSet.populateMissingResources(privateGitDomain)
 
-	switch ciType {
-	case "drone":
-		droneConfig, err := ci.LoadDroneConfigIfPresent(outputPath)
+	// init new config
+	newConfig := ci.ActionsConfig{
+		Name: "CI",
+		On:   []string{"push"},
+		Jobs: map[string]ci.ActionsJobConfig{},
+	}
+
+	// generic tasks
+	newConfig.Jobs["ci-all"] = ci.ActionsJobConfig{
+		RunsOn: "ubuntu-latest",
+		If:     "always()",
+		Container: ci.ActionsJobContainerConfig{
+			Image: resourceSet.utilStepImage,
+		},
+		Needs: []*regexp.Regexp{
+			regexp.MustCompile(`check\-.*`),
+			regexp.MustCompile(`img\-*`),
+		},
+		Steps: []ci.ActionsJobStepConfig{
+			{
+				Run: `
+results=$(echo '${{ toJson(needs) }}' | (grep '"result"' || echo))
+if echo "$results" | grep -q "failure\|cancelled\|skipped"; then
+  echo "One or more jobs failed, were cancelled, or were skipped" >&2
+  exit 1
+fi
+echo "All jobs passed"
+`,
+			},
+		},
+	}
+
+	// language check tasks
+	langs := []string{"buf", "go", "js", "sqlc"}
+	langTasks := []string{"deps", "lint", "test"}
+	for _, lang := range langs {
+		// TODO: consider RUNTIME_ENV and RUNTIME_PACKAGES
+
+		image, err := getImageForLanguageTask(resourceSet, lang)
 		if err != nil {
-			slog.Warn("Error reading existing Drone config - continuing without it", "error", err)
-		}
-		if droneConfig != nil {
-			imageSet = extractImagesFromDroneConfig(*droneConfig)
-		}
-
-	case "circle":
-		circleConfig, err := ci.LoadCircleConfigIfPresent(outputPath)
-		if err != nil {
-			slog.Warn("Error reading existing Circle config - continuing without it", "error", err)
-		}
-		if circleConfig != nil {
-			imageSet = extractImagesFromCircleConfig(*circleConfig)
-		}
-	}
-
-	imageSet.populateMissingImages(ciType)
-
-	// generate CI steps based on tasks
-	steps := make([]*ci.GenericCiStep, 0)
-
-	if ciType == "circle" {
-		steps = append(steps, &ci.GenericCiStep{
-			Name:           "checkout",
-			Image:          imageSet.utilStepImage,
-			IsCheckoutStep: true,
-			WorkspacePersistPaths: []string{
-				".",
-			},
-		})
-	}
-
-	steps = append(steps, &ci.GenericCiStep{
-		Name:  "fetch-task",
-		Image: imageSet.fetchTaskStepImage,
-		Commands: []string{
-			`cp /task .`,
-		},
-		WorkspacePersistPaths: []string{
-			"./task",
-		},
-	})
-
-	steps = append(steps, &ci.GenericCiStep{
-		Name:        "ci-all",
-		Image:       imageSet.utilStepImage,
-		NoWorkspace: true,
-		Commands: []string{
-			`echo "Done"`,
-		},
-		Dependencies: []regexp.Regexp{
-			*regexp.MustCompile(`deps\-.*`),
-			*regexp.MustCompile(`lint\-.*`),
-			*regexp.MustCompile(`test\-.*`),
-			*regexp.MustCompile(`img.*`),
-		},
-	})
-
-	if slices.Contains(taskNames, "cachekey") {
-		steps = append(steps, &ci.GenericCiStep{
-			Name:  "cachekey",
-			Image: imageSet.utilStepImage,
-			Commands: []string{
-				`./task cachekey`,
-			},
-			WorkspacePersistPaths: []string{
-				"./.task-meta-cachekey*",
-			},
-			Dependencies: []regexp.Regexp{
-				*regexp.MustCompile(`checkout`),
-				*regexp.MustCompile(`fetch\-task`),
-			},
-		})
-	}
-
-	if slices.Contains(taskNames, "deps-go") {
-		steps = append(steps, &ci.GenericCiStep{
-			Name:  "deps-go",
-			Image: imageSet.goStepImage,
-			CacheRestoreKeys: []string{
-				fmt.Sprintf(`deps-go-v%d-{{ checksum ".task-meta-cachekey-go" }}`, cacheVersion),
-				fmt.Sprintf(`deps-go-v%d-`, cacheVersion),
-			},
-			Commands: []string{
-				`export GOPATH=/.go`,
-				`export GOCACHE=/.gocache`,
-				`./task deps-go`,
-			},
-			CacheSaveKey: fmt.Sprintf(`deps-go-v%d-{{ checksum ".task-meta-cachekey-go" }}`, cacheVersion),
-			CacheSavePaths: []string{
-				"/.go",
-				"/.gocache",
-			},
-			Dependencies: []regexp.Regexp{
-				*regexp.MustCompile(`checkout`),
-				*regexp.MustCompile(`fetch\-task`),
-				*regexp.MustCompile(`cachekey`),
-			},
-		})
-	}
-
-	if slices.Contains(taskNames, "deps-js") {
-		// circle's save-cache step doesn't support globs, so we have to build this path ourselves
-		cachePaths := []string{
-			"/usr/local/lib/node_modules",
-		}
-		for _, t := range taskNames {
-			if strings.HasPrefix(t, "deps-js-") {
-				cachePaths = append(cachePaths, path.Join(strings.ReplaceAll(taskfile.Tasks[t].Directory, "{{.ROOT_DIR}}", "."), "node_modules"))
-			}
-		}
-
-		steps = append(steps, &ci.GenericCiStep{
-			Name:  "deps-js",
-			Image: imageSet.jsStepImage,
-			CacheRestoreKeys: []string{
-				fmt.Sprintf(`deps-js-v%d-{{ checksum ".task-meta-cachekey-js" }}`, cacheVersion),
-				fmt.Sprintf(`deps-js-v%d-`, cacheVersion),
-			},
-			Commands: []string{
-				`npm install -g --force yarn pnpm`,
-				`./task deps-js`,
-			},
-			CacheSaveKey:   fmt.Sprintf(`deps-js-v%d-{{ checksum ".task-meta-cachekey-js" }}`, cacheVersion),
-			CacheSavePaths: cachePaths,
-			Dependencies: []regexp.Regexp{
-				*regexp.MustCompile(`checkout`),
-				*regexp.MustCompile(`fetch\-task`),
-				*regexp.MustCompile(`cachekey`),
-			},
-		})
-	}
-
-	lintOrTestTaskRegex := regexp.MustCompile(`(lint|test)\-[a-z]+$`)
-	for _, name := range taskNames {
-		if lintOrTestTaskRegex.MatchString(name) {
-			lang := strings.Split(name, "-")[1]
-			image, err := getImageForLanguageTask(imageSet, name)
-			if err != nil {
-				slog.Error("unable to determine image for step", "error", err)
-				os.Exit(1)
-			}
-
-			commands := make([]string, 0)
-
-			// add runtime dependencies
-			runtimePackages := os.Getenv(fmt.Sprintf("%s_RUNTIME_PACKAGES", strings.ToUpper(lang)))
-			if runtimePackages != "" {
-				commands = append(commands, fmt.Sprintf(`apt update && apt install -y --no-install-recommends %s`, runtimePackages))
-			}
-
-			// add runtime environment
-			runtimeEnvPrefix := fmt.Sprintf("%s_RUNTIME_ENV_", strings.ToUpper(lang))
-			for _, env := range os.Environ() {
-				envPair := strings.SplitN(env, "=", 2)
-				if strings.HasPrefix(envPair[0], runtimeEnvPrefix) {
-					commands = append(commands, fmt.Sprintf(`export %s="%s"`, strings.TrimPrefix(envPair[0], runtimeEnvPrefix), envPair[1]))
-				}
-			}
-
-			// add language-specific setup steps
-			switch lang {
-			case "go":
-				commands = append(commands, `export GOPATH=/.go`)
-				commands = append(commands, `export GOCACHE=/.gocache`)
-			case "js":
-				commands = append(commands, `npm install -g --force yarn pnpm`)
-			}
-
-			commands = append(commands, fmt.Sprintf("./task %s", name))
-
-			steps = append(steps, &ci.GenericCiStep{
-				Name:     name,
-				Image:    image,
-				Commands: commands,
-				CacheRestoreKeys: []string{
-					fmt.Sprintf(`deps-%s-v%d-{{ checksum ".task-meta-cachekey-%s" }}`, lang, cacheVersion, lang),
-					fmt.Sprintf("deps-%s-v%d-", lang, cacheVersion),
-				},
-				Dependencies: []regexp.Regexp{
-					*regexp.MustCompile(`checkout`),
-					*regexp.MustCompile(`fetch\-task`),
-					*regexp.MustCompile(fmt.Sprintf(`deps\-%s`, lang)),
-				},
-			})
-		}
-	}
-
-	if slices.Contains(taskNames, "imgrefs") {
-		// refs
-		commands := make([]string, 0)
-		if ciType == "drone" {
-			commands = append(commands, `git fetch --tags`)
-		}
-		commands = append(commands, `./task imgrefs`)
-
-		steps = append(steps, &ci.GenericCiStep{
-			Name:     "imgrefs",
-			Image:    imageSet.gitStepImage,
-			Commands: commands,
-			WorkspacePersistPaths: []string{
-				"./.task-meta-imgrefs",
-				"./**/.task-meta-imgrefs",
-			},
-			Dependencies: []regexp.Regexp{
-				*regexp.MustCompile(`checkout`),
-				*regexp.MustCompile(`fetch\-task`),
-			},
-		})
-
-		// build + push
-		commands = make([]string, 0)
-		if ciType == "circle" {
-			commands = append(commands, `echo "${GHCR_PUBLISH_TOKEN}" | docker login ghcr.io -u markormesher --password-stdin`)
-		}
-		commands = append(commands, `./task imgbuild`)
-		commands = append(commands, `./task imgpush`)
-
-		step := ci.GenericCiStep{
-			Name:     "imgbuild-imgpush",
-			Image:    imageSet.imgStepImage,
-			Commands: commands,
-			Dependencies: []regexp.Regexp{
-				*regexp.MustCompile(`checkout`),
-				*regexp.MustCompile(`fetch\-task`),
-				*regexp.MustCompile(`lint\-.*`),
-				*regexp.MustCompile(`test\-.*`),
-				*regexp.MustCompile(`imgrefs`),
-			},
-			NeedsDocker: true,
-		}
-
-		if ciType == "drone" {
-			step.Environment = map[string]string{
-				"CONTAINER_HOST": "tcp://podman.podman.svc.cluster.local:8000",
-			}
-		}
-
-		steps = append(steps, &step)
-	}
-
-	// resolve step names
-	stepNames := make([]string, 0)
-	for _, step := range steps {
-		stepNames = append(stepNames, step.Name)
-	}
-
-	for _, step := range steps {
-		matchedSteps := util.MatchingStrings(stepNames, step.Dependencies)
-		slices.Sort(matchedSteps)
-		step.ResolvedDependencies = matchedSteps
-	}
-
-	// sort steps by name and then by topology to make the output deterministic and readable
-	sort.Slice(steps, func(a, b int) bool {
-		return cmp.Less(steps[a].Name, steps[b].Name)
-	})
-
-	sortedSteps := make([]*ci.GenericCiStep, 0)
-	dependenciesMet := make([]string, 0)
-	for len(sortedSteps) < len(steps) {
-		sizeBefore := len(sortedSteps)
-
-		for i, step := range steps {
-			if step == nil {
-				continue
-			}
-
-			if util.SliceIsSubset(dependenciesMet, step.ResolvedDependencies) {
-				dependenciesMet = append(dependenciesMet, step.Name)
-				sortedSteps = append(sortedSteps, step)
-				steps[i] = nil
-			}
-		}
-
-		if sizeBefore == len(sortedSteps) {
-			slog.Error("Detected a loop in step dependencies")
+			slog.Error("unable to get image to language task", "error", err)
 			os.Exit(1)
 		}
+
+		job := ci.ActionsJobConfig{
+			RunsOn: "ubuntu-latest",
+			Container: ci.ActionsJobContainerConfig{
+				Image: image,
+			},
+			Steps: []ci.ActionsJobStepConfig{
+				{Uses: resourceSet.ciResourcesAction},
+			},
+		}
+
+		// handle special cases
+		if lang == "js" {
+			job.Steps = append(job.Steps, ci.ActionsJobStepConfig{
+				Run: "npm install -g --force yarn pnpm",
+			})
+		}
+
+		langHasTasks := false
+		for _, langTask := range langTasks {
+			taskName := fmt.Sprintf("%s-%s", langTask, lang)
+			if slices.Contains(taskNames, taskName) {
+				langHasTasks = true
+				job.Steps = append(job.Steps, ci.ActionsJobStepConfig{
+					Run: fmt.Sprintf("./task %s", taskName),
+				})
+			}
+		}
+
+		if langHasTasks {
+			newConfig.Jobs["check-"+lang] = job
+		}
+	}
+
+	// container image tasks
+	if slices.Contains(taskNames, "imgrefs") {
+		job := ci.ActionsJobConfig{
+			RunsOn: "ubuntu-latest",
+			Needs: []*regexp.Regexp{
+				regexp.MustCompile(`^check\-.*`),
+			},
+			Permissions: map[string]string{},
+			Steps: []ci.ActionsJobStepConfig{
+				{Uses: resourceSet.ciResourcesAction},
+			},
+		}
+
+		// login stage
+		if privateGitDomain == "" {
+			job.Permissions["packages"] = "write"
+			job.Steps = append(job.Steps, ci.ActionsJobStepConfig{
+				Run: `buildah login ghcr.io -u "${{ github.actor }}" -p "${{ github.token }}"`,
+			})
+		} else {
+			job.Steps = append(job.Steps, ci.ActionsJobStepConfig{
+				Run: fmt.Sprintf(`buildah login "%s" -u ci -p "${{ secrets.PACKAGE_PUBLISH_TOKEN }}"`, privateGitDomain),
+			})
+		}
+
+		for _, t := range []string{"imgrefs", "imgbuild", "imgpush"} {
+			job.Steps = append(job.Steps, ci.ActionsJobStepConfig{
+				Run: fmt.Sprintf("./task %s", t),
+			})
+		}
+
+		newConfig.Jobs["img-build-push"] = job
+	}
+
+	// resolve needs
+	allJobsNames := slices.Collect(maps.Keys(newConfig.Jobs))
+	for name, job := range newConfig.Jobs {
+		resolvedNeeds := util.MatchingStrings(allJobsNames, job.Needs)
+		job.ResolvedNeeds = resolvedNeeds
+		newConfig.Jobs[name] = job
 	}
 
 	// write out the actual config
-	var output any
-	switch ciType {
-	case "drone":
-		output = ci.GenerateDroneConfig(sortedSteps)
-	case "circle":
-		output = ci.GenerateCircleConfig(sortedSteps)
-	}
-
 	var outputBuffer bytes.Buffer
 	encoder := yaml.NewEncoder(&outputBuffer)
 	encoder.SetIndent(2)
-	err = encoder.Encode(output)
+	err = encoder.Encode(newConfig)
 	if err != nil {
-		slog.Error("Couldn't marshall output")
+		slog.Error("couldn't encode output")
 		os.Exit(1)
 	}
 
+	// post-process lines
+	outputLines := []string{
+		"# This file is maintained by Tedium - manual edits will be overwritten!",
+	}
+	for line := range strings.SplitSeq(outputBuffer.String(), "\n") {
+		// restore renovate actions versions comments if applicable
+		if strings.Contains(line, resourceSet.ciResourcesAction) && resourceSet.ciResourcesActionTag != "" {
+			line = line + " # " + resourceSet.ciResourcesActionTag
+		}
+
+		outputLines = append(outputLines, line)
+	}
+	output := strings.Join(outputLines, "\n")
+
 	handleWriteError := func(err error) {
 		if err != nil {
-			slog.Error("Error writing to CI config", "error", err)
+			slog.Error("error writing to CI config", "error", err)
 			os.Exit(1)
 		}
 	}
@@ -409,18 +265,15 @@ func updateCIConfig(projectPath string, ciType string) {
 	outputFile, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	handleWriteError(err)
 	defer func() {
-		_ = outputFile.Close()
+		err := outputFile.Close()
+		handleWriteError(err)
 	}()
 
-	_, err = outputFile.WriteString("# This file is maintained by Tedium - manual edits will be overwritten!\n\n")
-	handleWriteError(err)
-
-	_, err = outputFile.Write(outputBuffer.Bytes())
+	_, err = outputFile.WriteString(output)
 	handleWriteError(err)
 }
 
-func getImageForLanguageTask(imageSet ImageSet, taskName string) (string, error) {
-	lang := strings.Split(taskName, "-")[1]
+func getImageForLanguageTask(imageSet ResourceSet, lang string) (string, error) {
 	switch lang {
 	case "buf":
 		return imageSet.bufStepImage, nil
@@ -435,18 +288,16 @@ func getImageForLanguageTask(imageSet ImageSet, taskName string) (string, error)
 	}
 }
 
-func extractImagesFromDroneConfig(config ci.DroneConfig) ImageSet {
-	output := ImageSet{}
+func extractResourcesFromConfig(config ci.ActionsConfig, rawConfig []byte) ResourceSet {
+	output := ResourceSet{}
 
-	for _, step := range config.Steps {
-		image := step.Image
+	for _, job := range config.Jobs {
+		image := job.Container.Image
 		switch {
 		case strings.Contains(image, "bufbuild"):
 			output.bufStepImage = image
 		case strings.Contains(image, "busybox"):
 			output.utilStepImage = image
-		case strings.Contains(image, "git"):
-			output.gitStepImage = image
 		case strings.Contains(image, "golang"):
 			output.goStepImage = image
 		case strings.Contains(image, "node"):
@@ -455,75 +306,61 @@ func extractImagesFromDroneConfig(config ci.DroneConfig) ImageSet {
 			output.imgStepImage = image
 		case strings.Contains(image, "sqlc"):
 			output.sqlcStepImage = image
-		case strings.Contains(image, "task-fetcher"):
-			output.fetchTaskStepImage = image
 		}
+
+		for _, step := range job.Steps {
+			uses := step.Uses
+			switch {
+			case strings.Contains(uses, "ci-resources"):
+				output.ciResourcesAction = uses
+			}
+		}
+	}
+
+	// find the actions verison comment added by renovate, if present
+	if output.ciResourcesAction != "" {
+		scanner := bufio.NewScanner(bytes.NewReader(rawConfig))
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.Contains(line, output.ciResourcesAction) {
+				chunks := strings.Split(line, "#")
+				if len(chunks) > 1 {
+					output.ciResourcesActionTag = strings.TrimSpace(chunks[1])
+					break
+				}
+			}
+		}
+
 	}
 
 	return output
 }
 
-func extractImagesFromCircleConfig(config ci.CircleConfig) ImageSet {
-	output := ImageSet{}
-
-	for _, job := range config.Jobs {
-		if len(job.Docker) < 1 {
-			continue
-		}
-
-		image := job.Docker[0].Image
-		switch {
-		case strings.Contains(image, "bufbuild"):
-			output.bufStepImage = image
-		case strings.Contains(image, "cimg/base"):
-			output.utilStepImage = image
-			output.imgStepImage = image
-		case strings.Contains(image, "git"):
-			output.gitStepImage = image
-		case strings.Contains(image, "golang"):
-			output.goStepImage = image
-		case strings.Contains(image, "node"):
-			output.jsStepImage = image
-		case strings.Contains(image, "sqlc"):
-			output.sqlcStepImage = image
-		case strings.Contains(image, "task-fetcher"):
-			output.fetchTaskStepImage = image
-		}
-	}
-
-	return output
-}
-
-func (s *ImageSet) populateMissingImages(ciType string) {
-	// set missing image versions
+func (s *ResourceSet) populateMissingResources(privateGitDomain string) {
 	// these defaults will slowly get out of date, but they will only be applied to first-time ci and Renovate will update them anyway
+
+	if s.ciResourcesAction == "" {
+		if privateGitDomain == "" {
+			s.ciResourcesAction = "markormesher/ci-resources/setup@v0.6.0"
+		} else {
+			s.ciResourcesAction = fmt.Sprintf("https://%s/mormesher/ci-resources/setup@v0.6.0", privateGitDomain)
+		}
+	}
 
 	if s.bufStepImage == "" {
 		s.bufStepImage = "docker.io/bufbuild/buf:1.61.0"
 	}
 
-	if s.fetchTaskStepImage == "" {
-		s.fetchTaskStepImage = "ghcr.io/markormesher/task-fetcher:v0.5.47"
-	}
-
-	if s.gitStepImage == "" {
-		s.gitStepImage = "docker.io/alpine/git:v2.52.0"
-	}
-
 	if s.goStepImage == "" {
-		s.goStepImage = "docker.io/golang:1.25.5"
+		s.goStepImage = "docker.io/golang:1.26.0"
 	}
 
-	if s.imgStepImage == "" {
-		if ciType == "circle" {
-			s.imgStepImage = "cimg/base:2025.12"
-		} else {
-			s.imgStepImage = "quay.io/podman/stable:v5.7.1-immutable"
-		}
+	if s.imgStepImage == "" || !strings.Contains(s.imgStepImage, "-immutable") {
+		s.imgStepImage = "quay.io/podman/stable:v5.7.1-immutable"
 	}
 
-	if s.jsStepImage == "" {
-		s.jsStepImage = "docker.io/node:24.12.0-slim"
+	if s.jsStepImage == "" || strings.Contains(s.jsStepImage, "-slim") {
+		s.jsStepImage = "docker.io/node:25.9.0"
 	}
 
 	if s.sqlcStepImage == "" {
@@ -531,22 +368,6 @@ func (s *ImageSet) populateMissingImages(ciType string) {
 	}
 
 	if s.utilStepImage == "" {
-		if ciType == "circle" {
-			s.utilStepImage = "cimg/base:2025.12"
-		} else {
-			s.utilStepImage = "docker.io/busybox:1.37.0"
-		}
-	}
-
-	// other image modifications
-
-	// update podman images to use the -immutable flavours
-	if strings.Contains(s.imgStepImage, "podman") && !strings.Contains(s.imgStepImage, "immutable") {
-		s.imgStepImage = s.imgStepImage + "-immutable"
-	}
-
-	// update git image to include registry
-	if strings.HasPrefix(s.gitStepImage, "alpine/git") {
-		s.gitStepImage = "docker.io/" + s.gitStepImage
+		s.utilStepImage = "docker.io/busybox:1.37.0"
 	}
 }
