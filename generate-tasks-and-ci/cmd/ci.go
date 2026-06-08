@@ -222,6 +222,7 @@ echo "All jobs passed"
 
 	// resolve needs
 	allJobsNames := slices.Collect(maps.Keys(newConfig.Jobs))
+	slices.Sort(allJobsNames)
 	for name, job := range newConfig.Jobs {
 		resolvedNeeds := util.MatchingStrings(allJobsNames, job.Needs)
 		job.ResolvedNeeds = resolvedNeeds
