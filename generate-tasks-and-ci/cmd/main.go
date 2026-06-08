@@ -28,4 +28,5 @@ func main() {
 
 	updateTaskfile(projectPath)
 	updateCIConfig(projectPath)
+	deleteOldCIConfigs(projectPath)
 }

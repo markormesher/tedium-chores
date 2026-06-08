@@ -31,6 +31,30 @@ type ResourceSet struct {
 	ciResourcesActionTag string
 }
 
+func deleteOldCIConfigs(projectPath string) {
+	projectPath = strings.TrimRight(projectPath, "/")
+
+	projectPathExists, err := util.DirExists(projectPath)
+	if err != nil {
+		slog.Error("error checking whether project path exists", "error", err)
+		os.Exit(1)
+	}
+
+	if !projectPathExists {
+		slog.Error("project path does not exist", "path", projectPath)
+		os.Exit(1)
+	}
+
+	oldPaths := []string{".circle", ".drone.yml"}
+	for _, p := range oldPaths {
+		err := os.RemoveAll(path.Join(projectPath, p))
+		if err != nil {
+			slog.Error("error deleting old CI config", "path", p, "error", err)
+			os.Exit(1)
+		}
+	}
+}
+
 func updateCIConfig(projectPath string) {
 	projectPath = strings.TrimRight(projectPath, "/")
 
