@@ -1,0 +1,5 @@
+name: "Remove Dead CircleCI Links"
+description: "This chore removes CircleCI links in the README if CircleCI is no longer used on the project."
+steps:
+  - image: "ghcr.io/markormesher/tedium-chore-remove-dead-circleci-links:latest"
+    command: "/usr/local/bin/remove-links.sh"
