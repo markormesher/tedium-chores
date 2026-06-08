@@ -38,17 +38,17 @@ type ActionsJobStepConfig struct {
 	Run         string            `yaml:"run,omitempty"`
 }
 
-func LoadActionsConfigIfPresent(path string) (*ActionsConfig, error) {
+func LoadActionsConfigIfPresent(path string) (*ActionsConfig, []byte, error) {
 	_, err := os.Stat(path)
 	if os.IsNotExist(err) {
-		return nil, nil
+		return nil, nil, nil
 	} else if err != nil {
-		return nil, fmt.Errorf("error checking Actions config path: %w", err)
+		return nil, nil, fmt.Errorf("error checking Actions config path: %w", err)
 	}
 
 	contents, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("error reading Actions config: %w", err)
+		return nil, nil, fmt.Errorf("error reading Actions config: %w", err)
 	}
 
 	var config ActionsConfig
@@ -56,8 +56,8 @@ func LoadActionsConfigIfPresent(path string) (*ActionsConfig, error) {
 	decoder.KnownFields(false)
 	err = decoder.Decode(&config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing Actions config: %w", err)
+		return nil, contents, fmt.Errorf("error parsing Actions config: %w", err)
 	}
 
-	return &config, nil
+	return &config, contents, nil
 }

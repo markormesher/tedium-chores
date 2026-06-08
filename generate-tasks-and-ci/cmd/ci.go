@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"log/slog"
@@ -19,7 +20,8 @@ import (
 
 // ImageSet is a utility type to store the container image references used for various steps.
 type ImageSet struct {
-	ciResourcesAction string
+	ciResourcesAction    string
+	ciResourcesActionTag string
 
 	bufStepImage  string
 	goStepImage   string
@@ -29,7 +31,7 @@ type ImageSet struct {
 	utilStepImage string
 }
 
-func updateCIConfig(projectPath string, ciType string) {
+func updateCIConfig(projectPath string) {
 	projectPath = strings.TrimRight(projectPath, "/")
 
 	projectPathExists, err := util.DirExists(projectPath)
@@ -65,7 +67,7 @@ func updateCIConfig(projectPath string, ciType string) {
 		os.Exit(0)
 	}
 
-	taskNames := make([]string, 0)
+	taskNames := []string{}
 	for name, task := range taskfile.Tasks {
 		if !task.Internal {
 			taskNames = append(taskNames, name)
@@ -74,14 +76,14 @@ func updateCIConfig(projectPath string, ciType string) {
 
 	// extract image versions from existing CI files if possible
 	imageSet := ImageSet{}
-	existingConfig, err := ci.LoadActionsConfigIfPresent(outputPath)
+	oldConfig, oldConfigRaw, err := ci.LoadActionsConfigIfPresent(outputPath)
 	if err != nil {
 		slog.Warn("error reading existing config - continuing without it", "error", err)
 	}
-	if existingConfig != nil {
-		imageSet = extractImagesFromConfig(*existingConfig)
+	if oldConfig != nil {
+		imageSet = extractImagesFromConfig(*oldConfig, oldConfigRaw)
 	}
-	imageSet.populateMissingImages(ciType, privateGitDomain)
+	imageSet.populateMissingImages(privateGitDomain)
 
 	// init new config
 	newConfig := ci.ActionsConfig{
@@ -210,6 +212,20 @@ echo "All jobs passed"
 		os.Exit(1)
 	}
 
+	// post-process lines
+	outputLines := []string{
+		"# This file is maintained by Tedium - manual edits will be overwritten!",
+	}
+	for line := range strings.SplitSeq(outputBuffer.String(), "\n") {
+		// restore renovate actions versions comments if applicable
+		if strings.Contains(line, imageSet.ciResourcesAction) && imageSet.ciResourcesActionTag != "" {
+			line = line + " # " + imageSet.ciResourcesActionTag
+		}
+
+		outputLines = append(outputLines, line)
+	}
+	output := strings.Join(outputLines, "\n")
+
 	handleWriteError := func(err error) {
 		if err != nil {
 			slog.Error("error writing to CI config", "error", err)
@@ -223,13 +239,11 @@ echo "All jobs passed"
 	outputFile, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	handleWriteError(err)
 	defer func() {
-		_ = outputFile.Close()
+		err := outputFile.Close()
+		handleWriteError(err)
 	}()
 
-	_, err = outputFile.WriteString("# This file is maintained by Tedium - manual edits will be overwritten!\n\n")
-	handleWriteError(err)
-
-	_, err = outputFile.Write(outputBuffer.Bytes())
+	_, err = outputFile.WriteString(output)
 	handleWriteError(err)
 }
 
@@ -248,7 +262,7 @@ func getImageForLanguageTask(imageSet ImageSet, lang string) (string, error) {
 	}
 }
 
-func extractImagesFromConfig(config ci.ActionsConfig) ImageSet {
+func extractImagesFromConfig(config ci.ActionsConfig, rawConfig []byte) ImageSet {
 	output := ImageSet{}
 
 	for _, job := range config.Jobs {
@@ -277,18 +291,34 @@ func extractImagesFromConfig(config ci.ActionsConfig) ImageSet {
 		}
 	}
 
+	// find the actions verison comment added by renovate, if present
+	if output.ciResourcesAction != "" {
+		scanner := bufio.NewScanner(bytes.NewReader(rawConfig))
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.Contains(line, output.ciResourcesAction) {
+				chunks := strings.Split(line, "#")
+				if len(chunks) > 1 {
+					output.ciResourcesActionTag = strings.TrimSpace(chunks[1])
+					break
+				}
+			}
+		}
+
+	}
+
 	return output
 }
 
-func (s *ImageSet) populateMissingImages(ciType string, privateGitDomain string) {
+func (s *ImageSet) populateMissingImages(privateGitDomain string) {
 	// set missing image versions
 	// these defaults will slowly get out of date, but they will only be applied to first-time ci and Renovate will update them anyway
 
 	if s.ciResourcesAction == "" {
 		if privateGitDomain == "" {
-			s.ciResourcesAction = "markormesher/ci-resources/setup@b00d88afa57454835e0d70ddb262ada21cb4380a"
+			s.ciResourcesAction = "markormesher/ci-resources/setup@v0.5.0"
 		} else {
-			s.ciResourcesAction = fmt.Sprintf("https://%s/mormesher/ci-resources/setup@b00d88afa57454835e0d70ddb262ada21cb4380a", privateGitDomain)
+			s.ciResourcesAction = fmt.Sprintf("https://%s/mormesher/ci-resources/setup@v0.5.0", privateGitDomain)
 		}
 	}
 
@@ -297,19 +327,15 @@ func (s *ImageSet) populateMissingImages(ciType string, privateGitDomain string)
 	}
 
 	if s.goStepImage == "" {
-		s.goStepImage = "docker.io/golang:1.25.5"
+		s.goStepImage = "docker.io/golang:1.26.5"
 	}
 
-	if s.imgStepImage == "" {
-		if ciType == "circle" {
-			s.imgStepImage = "cimg/base:2025.12"
-		} else {
-			s.imgStepImage = "quay.io/podman/stable:v5.7.1-immutable"
-		}
+	if s.imgStepImage == "" || !strings.Contains(s.imgStepImage, "-immutable") {
+		s.imgStepImage = "quay.io/podman/stable:v5.7.1-immutable"
 	}
 
-	if s.jsStepImage == "" {
-		s.jsStepImage = "docker.io/node:24.12.0-slim"
+	if s.jsStepImage == "" || strings.Contains(s.jsStepImage, "-slim") {
+		s.jsStepImage = "docker.io/node:25.9.0"
 	}
 
 	if s.sqlcStepImage == "" {
@@ -317,17 +343,6 @@ func (s *ImageSet) populateMissingImages(ciType string, privateGitDomain string)
 	}
 
 	if s.utilStepImage == "" {
-		if ciType == "circle" {
-			s.utilStepImage = "cimg/base:2025.12"
-		} else {
-			s.utilStepImage = "docker.io/busybox:1.37.0"
-		}
-	}
-
-	// other image modifications
-
-	// update podman images to use the -immutable flavours
-	if strings.Contains(s.imgStepImage, "podman") && !strings.Contains(s.imgStepImage, "immutable") {
-		s.imgStepImage = s.imgStepImage + "-immutable"
+		s.utilStepImage = "docker.io/busybox:1.37.0"
 	}
 }
