@@ -5,7 +5,7 @@ import (
 	"slices"
 )
 
-func MatchingStrings(candidates []string, patterns []regexp.Regexp) []string {
+func MatchingStrings(candidates []string, patterns []*regexp.Regexp) []string {
 	matches := make([]string, 0)
 	for _, candidate := range candidates {
 		for _, pattern := range patterns {
