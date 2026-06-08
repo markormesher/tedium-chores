@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs:
-      - img-build-push
       - check-go
+      - img-build-push
     container:
       image: docker.io/busybox:1.37.0
     steps:
@@ -32,6 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - check-go
+    permissions:
+      packages: write
     steps:
       - uses: markormesher/ci-resources/setup@v0.6.0
       - run: buildah login ghcr.io -u "${{ github.actor }}" -p "${{ github.token }}"

@@ -22,6 +22,7 @@ type ActionsJobConfig struct {
 	If            string                    `yaml:"if,omitempty"`
 	Needs         []*regexp.Regexp          `yaml:"-"`
 	ResolvedNeeds []string                  `yaml:"needs,omitempty"`
+	Permissions   map[string]string         `yaml:"permissions,omitempty"`
 	Container     ActionsJobContainerConfig `yaml:"container,omitempty"`
 	Steps         []ActionsJobStepConfig    `yaml:"steps"`
 }

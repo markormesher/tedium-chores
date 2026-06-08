@@ -193,6 +193,7 @@ echo "All jobs passed"
 			Needs: []*regexp.Regexp{
 				regexp.MustCompile(`^check\-.*`),
 			},
+			Permissions: map[string]string{},
 			Steps: []ci.ActionsJobStepConfig{
 				{Uses: resourceSet.ciResourcesAction},
 			},
@@ -200,6 +201,7 @@ echo "All jobs passed"
 
 		// login stage
 		if privateGitDomain == "" {
+			job.Permissions["packages"] = "write"
 			job.Steps = append(job.Steps, ci.ActionsJobStepConfig{
 				Run: `buildah login ghcr.io -u "${{ github.actor }}" -p "${{ github.token }}"`,
 			})
