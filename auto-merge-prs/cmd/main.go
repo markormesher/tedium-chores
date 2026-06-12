@@ -82,14 +82,14 @@ PRLoop:
 			continue PRLoop
 		}
 
-		passingContexts, err := getPassingContexts(pr)
+		statuses, err := getPRStatuses(pr)
 		if err != nil {
 			slog.Info("error getting passing contexts; will continue with others", "error", err)
 			anyFailed = true
 			continue PRLoop
 		}
 
-		doMerge, reason := shouldMerge(branchProtected, requiredContexts, passingContexts, apiType)
+		doMerge, reason := shouldMerge(branchProtected, requiredContexts, statuses, apiType)
 		if !doMerge {
 			slog.Info("PR cannot be merged", "reason", reason)
 			continue
@@ -196,28 +196,42 @@ func getBranchProtection(pr PullRequest) (bool, []string, error) {
 	return false, nil, nil
 }
 
-func getPassingContexts(pr PullRequest) ([]string, error) {
+func getPRStatuses(pr PullRequest) (Statuses, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/commits/%s/status", apiBase, repoOwner, repoName, pr.Head.SHA)
 	data, _, err := doRequest("GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error getting commit status: %w", err)
+		return Statuses{}, fmt.Errorf("error getting commit status: %w", err)
 	}
 
 	var combinedStatus CommitStatus
 	err = json.Unmarshal(data, &combinedStatus)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing commit status: %w", err)
+		return Statuses{}, fmt.Errorf("error parsing commit status: %w", err)
 	}
 
-	passing := []string{}
+	statuses := Statuses{}
 	for _, s := range combinedStatus.Statuses {
 		// gitea uses "status", github uses "state", so check both
-		if s.Status == "success" || s.State == "success" {
-			passing = append(passing, s.Context)
+		status := ""
+		if s.Status != "" {
+			status = strings.ToLower(s.Status)
+		} else {
+			status = strings.ToLower(s.State)
+		}
+
+		switch status {
+		case "success":
+			statuses.Passing = append(statuses.Passing, s.Context)
+		case "error":
+			statuses.Failing = append(statuses.Passing, s.Context)
+		case "expected":
+			statuses.Pending = append(statuses.Passing, s.Context)
+		default:
+			statuses.Other = append(statuses.Passing, s.Context)
 		}
 	}
 
-	return passing, nil
+	return statuses, nil
 }
 
 func mergePR(pr PullRequest) error {
@@ -281,7 +295,7 @@ func deleteBranch(pr PullRequest) error {
 	return nil
 }
 
-func shouldMerge(protected bool, requiredContexts []string, passingContexts []string, apiType string) (bool, string) {
+func shouldMerge(protected bool, requiredContexts []string, statuses Statuses, apiType string) (bool, string) {
 	if !protected {
 		return false, "target branch is unprotected"
 	}
@@ -290,10 +304,14 @@ func shouldMerge(protected bool, requiredContexts []string, passingContexts []st
 		return false, "target branch is protected but does not specify required checks"
 	}
 
+	if len(statuses.Failing) > 0 || len(statuses.Pending) > 0 || len(statuses.Other) > 0 {
+		return false, fmt.Sprintf("PR has one or more non-passing contexts: %v", statuses)
+	}
+
 	// this could be reduced to slices.ContainsFunc but that is a lot less readable
 	for _, requiredContext := range requiredContexts {
 		passed := false
-		for _, passingContext := range passingContexts {
+		for _, passingContext := range statuses.Passing {
 			if apiType == "gitea" && strMatchWithWildcard(requiredContext, passingContext) {
 				passed = true
 				break

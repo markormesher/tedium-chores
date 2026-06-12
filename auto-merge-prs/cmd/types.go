@@ -36,6 +36,13 @@ type CommitStatus struct {
 	} `json:"statuses"`
 }
 
+type Statuses struct {
+	Passing []string
+	Failing []string
+	Pending []string
+	Other   []string
+}
+
 type GiteaMergeRequest struct {
 	Method string `json:"Do"`
 }
