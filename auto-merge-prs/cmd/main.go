@@ -77,17 +77,19 @@ PRLoop:
 
 		branchProtected, requiredContexts, err := getBranchProtection(pr)
 		if err != nil {
-			slog.Info("error checking branch protection; will continue with others", "error", err)
+			slog.Info("error checking branch protection; will continue with others PRs", "error", err)
 			anyFailed = true
 			continue PRLoop
 		}
 
 		statuses, err := getPRStatuses(pr)
 		if err != nil {
-			slog.Info("error getting passing contexts; will continue with others", "error", err)
+			slog.Info("error getting statuses; will continue with others PRs", "error", err)
 			anyFailed = true
 			continue PRLoop
 		}
+
+		slog.Info("PR details", "branchProtected", branchProtected, "requiredContexts", requiredContexts, "statuses", statuses)
 
 		doMerge, reason := shouldMerge(branchProtected, requiredContexts, statuses, apiType)
 		if !doMerge {
@@ -196,20 +198,20 @@ func getBranchProtection(pr PullRequest) (bool, []string, error) {
 	return false, nil, nil
 }
 
-func getPRStatuses(pr PullRequest) (Statuses, error) {
+func getPRStatuses(pr PullRequest) (ParsedCommitStatuses, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/commits/%s/status", apiBase, repoOwner, repoName, pr.Head.SHA)
 	data, _, err := doRequest("GET", url, nil)
 	if err != nil {
-		return Statuses{}, fmt.Errorf("error getting commit status: %w", err)
+		return ParsedCommitStatuses{}, fmt.Errorf("error getting commit status: %w", err)
 	}
 
 	var combinedStatus CommitStatus
 	err = json.Unmarshal(data, &combinedStatus)
 	if err != nil {
-		return Statuses{}, fmt.Errorf("error parsing commit status: %w", err)
+		return ParsedCommitStatuses{}, fmt.Errorf("error parsing commit status: %w", err)
 	}
 
-	statuses := Statuses{}
+	statuses := ParsedCommitStatuses{}
 	for _, s := range combinedStatus.Statuses {
 		// gitea uses "status", github uses "state", so check both
 		status := ""
@@ -295,7 +297,7 @@ func deleteBranch(pr PullRequest) error {
 	return nil
 }
 
-func shouldMerge(protected bool, requiredContexts []string, statuses Statuses, apiType string) (bool, string) {
+func shouldMerge(protected bool, requiredContexts []string, statuses ParsedCommitStatuses, apiType string) (bool, string) {
 	if !protected {
 		return false, "target branch is unprotected"
 	}
@@ -305,7 +307,7 @@ func shouldMerge(protected bool, requiredContexts []string, statuses Statuses, a
 	}
 
 	if len(statuses.Failing) > 0 || len(statuses.Pending) > 0 || len(statuses.Other) > 0 {
-		return false, fmt.Sprintf("PR has one or more non-passing contexts: %v", statuses)
+		return false, fmt.Sprintf("PR has one or more non-passing statuses: %v", statuses)
 	}
 
 	// this could be reduced to slices.ContainsFunc but that is a lot less readable

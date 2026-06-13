@@ -36,7 +36,7 @@ type CommitStatus struct {
 	} `json:"statuses"`
 }
 
-type Statuses struct {
+type ParsedCommitStatuses struct {
 	Passing []string
 	Failing []string
 	Pending []string
