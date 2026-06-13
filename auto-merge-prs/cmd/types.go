@@ -28,12 +28,19 @@ type GitHubBranchProtection struct {
 	} `json:"required_status_checks"`
 }
 
-type CommitStatus struct {
+type CommitStatuses struct {
 	Statuses []struct {
+		Context string `json:"context"`
 		Status  string `json:"status"`
 		State   string `json:"state"`
-		Context string `json:"context"`
 	} `json:"statuses"`
+}
+
+type CommitChecks struct {
+	CheckRuns []struct {
+		Name   string `json:"name"`
+		Status string `json:"conclusion"`
+	} `json:"check_runs"`
 }
 
 type ParsedCommitStatuses struct {

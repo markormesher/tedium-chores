@@ -199,20 +199,22 @@ func getBranchProtection(pr PullRequest) (bool, []string, error) {
 }
 
 func getPRStatuses(pr PullRequest) (ParsedCommitStatuses, error) {
+	statuses := ParsedCommitStatuses{}
+
+	// all platforms: load statuses
 	url := fmt.Sprintf("%s/repos/%s/%s/commits/%s/status", apiBase, repoOwner, repoName, pr.Head.SHA)
 	data, _, err := doRequest("GET", url, nil)
 	if err != nil {
 		return ParsedCommitStatuses{}, fmt.Errorf("error getting commit status: %w", err)
 	}
 
-	var combinedStatus CommitStatus
-	err = json.Unmarshal(data, &combinedStatus)
+	var commitStatuses CommitStatuses
+	err = json.Unmarshal(data, &commitStatuses)
 	if err != nil {
 		return ParsedCommitStatuses{}, fmt.Errorf("error parsing commit status: %w", err)
 	}
 
-	statuses := ParsedCommitStatuses{}
-	for _, s := range combinedStatus.Statuses {
+	for _, s := range commitStatuses.Statuses {
 		// gitea uses "status", github uses "state", so check both
 		status := ""
 		if s.Status != "" {
@@ -230,6 +232,36 @@ func getPRStatuses(pr PullRequest) (ParsedCommitStatuses, error) {
 			statuses.Pending = append(statuses.Passing, s.Context)
 		default:
 			statuses.Other = append(statuses.Passing, s.Context)
+		}
+	}
+
+	// github only: load checks as well
+	if apiType == "github" {
+		url := fmt.Sprintf("%s/repos/%s/%s/commits/%s/check-runs", apiBase, repoOwner, repoName, pr.Head.SHA)
+		data, _, err := doRequest("GET", url, nil)
+		if err != nil {
+			return ParsedCommitStatuses{}, fmt.Errorf("error getting commit checks: %w", err)
+		}
+
+		var commitChecks CommitChecks
+		err = json.Unmarshal(data, &commitChecks)
+		if err != nil {
+			return ParsedCommitStatuses{}, fmt.Errorf("error parsing commit checks: %w", err)
+		}
+
+		for _, s := range commitChecks.CheckRuns {
+			status := strings.ToLower(s.Status)
+
+			switch status {
+			case "success":
+				statuses.Passing = append(statuses.Passing, s.Name)
+			case "error":
+				statuses.Failing = append(statuses.Passing, s.Name)
+			case "expected":
+				statuses.Pending = append(statuses.Passing, s.Name)
+			default:
+				statuses.Other = append(statuses.Passing, s.Name)
+			}
 		}
 	}
 
