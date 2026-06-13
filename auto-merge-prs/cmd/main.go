@@ -249,18 +249,18 @@ func getPRStatuses(pr PullRequest) (ParsedCommitStatuses, error) {
 			return ParsedCommitStatuses{}, fmt.Errorf("error parsing commit checks: %w", err)
 		}
 
-		for _, s := range commitChecks.CheckRuns {
-			status := strings.ToLower(s.Status)
+		for _, r := range commitChecks.CheckRuns {
+			status := strings.ToLower(r.Status)
 
 			switch status {
 			case "success":
-				statuses.Passing = append(statuses.Passing, s.Name)
+				statuses.Passing = append(statuses.Passing, r.Name)
 			case "error":
-				statuses.Failing = append(statuses.Passing, s.Name)
+				statuses.Failing = append(statuses.Passing, r.Name)
 			case "expected":
-				statuses.Pending = append(statuses.Passing, s.Name)
+				statuses.Pending = append(statuses.Passing, r.Name)
 			default:
-				statuses.Other = append(statuses.Passing, s.Name)
+				statuses.Other = append(statuses.Passing, r.Name)
 			}
 		}
 	}
