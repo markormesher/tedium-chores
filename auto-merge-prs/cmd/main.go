@@ -228,7 +228,7 @@ func getPRStatuses(pr PullRequest) (ParsedCommitStatuses, error) {
 			statuses.Passing = append(statuses.Passing, s.Context)
 		case "error":
 			statuses.Failing = append(statuses.Failing, s.Context)
-		case "expected":
+		case "expected", "pending":
 			statuses.Pending = append(statuses.Pending, s.Context)
 		default:
 			slog.Warn("unrecognised check status", "status", status)
@@ -258,7 +258,7 @@ func getPRStatuses(pr PullRequest) (ParsedCommitStatuses, error) {
 				statuses.Passing = append(statuses.Passing, r.Name)
 			case "error":
 				statuses.Failing = append(statuses.Failing, r.Name)
-			case "expected":
+			case "expected", "pending":
 				statuses.Pending = append(statuses.Pending, r.Name)
 			default:
 				slog.Warn("unrecognised check status", "status", status)
