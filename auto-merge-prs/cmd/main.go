@@ -215,7 +215,7 @@ func getPRStatuses(pr PullRequest) (ParsedCommitStatuses, error) {
 	}
 
 	for _, s := range commitStatuses.Statuses {
-		// gitea uses "status", github uses "state", so check both
+		// gitea uses "status", github uses "state"
 		status := ""
 		if s.Status != "" {
 			status = strings.ToLower(s.Status)
@@ -227,11 +227,12 @@ func getPRStatuses(pr PullRequest) (ParsedCommitStatuses, error) {
 		case "success":
 			statuses.Passing = append(statuses.Passing, s.Context)
 		case "error":
-			statuses.Failing = append(statuses.Passing, s.Context)
+			statuses.Failing = append(statuses.Failing, s.Context)
 		case "expected":
-			statuses.Pending = append(statuses.Passing, s.Context)
+			statuses.Pending = append(statuses.Pending, s.Context)
 		default:
-			statuses.Other = append(statuses.Passing, s.Context)
+			slog.Warn("unrecognised check status", "status", status)
+			statuses.Other = append(statuses.Other, s.Context)
 		}
 	}
 
@@ -256,11 +257,12 @@ func getPRStatuses(pr PullRequest) (ParsedCommitStatuses, error) {
 			case "success":
 				statuses.Passing = append(statuses.Passing, r.Name)
 			case "error":
-				statuses.Failing = append(statuses.Passing, r.Name)
+				statuses.Failing = append(statuses.Failing, r.Name)
 			case "expected":
-				statuses.Pending = append(statuses.Passing, r.Name)
+				statuses.Pending = append(statuses.Pending, r.Name)
 			default:
-				statuses.Other = append(statuses.Passing, r.Name)
+				slog.Warn("unrecognised check status", "status", status)
+				statuses.Other = append(statuses.Other, r.Name)
 			}
 		}
 	}
