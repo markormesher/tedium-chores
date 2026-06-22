@@ -340,12 +340,8 @@ func extractResourcesFromConfig(config ci.ActionsConfig, rawConfig []byte) Resou
 func (s *ResourceSet) populateMissingResources(privateGitDomain string) {
 	// these defaults will slowly get out of date, but they will only be applied to first-time ci and Renovate will update them anyway
 
-	if s.ciResourcesAction == "" {
-		if privateGitDomain == "" {
-			s.ciResourcesAction = "markormesher/ci-resources/setup@v0.6.0"
-		} else {
-			s.ciResourcesAction = fmt.Sprintf("https://%s/mormesher/ci-resources/setup@v0.6.0", privateGitDomain)
-		}
+	if s.ciResourcesAction == "" || strings.Contains(s.ciResourcesAction, privateGitDomain) {
+		s.ciResourcesAction = "markormesher/ci-resources/setup@v0.6.0"
 	}
 
 	if s.bufStepImage == "" {
