@@ -84,10 +84,19 @@ tasks:
             buildah_opts+=("--storage-opt" "overlay.mount_program=$(command -v fuse-overlayfs)")
           fi
 
+          img_registry=$( (grep "LABEL image.registry=" Containerfile || echo) | tail -n 1 | cut -d '=' -f 2-)
+          img_name=$( (grep "LABEL image.name=" Containerfile || echo) | tail -n 1 | cut -d '=' -f 2-)
+          img_org=$(cut -d '/' -f 1 <<<"$img_name")
+
           bud_opts=(
             --layers
             -f "Containerfile"
           )
+
+          if [[ ! -z "${img_registry}" ]] && [[ ! -z "${img_org}" ]]; then
+            bud_opts+=("--cache-to" "${img_registry}/${img_org}/build-cache")
+            bud_opts+=("--cache-from" "${img_registry}/${img_org}/build-cache")
+          fi
 
           if [[ -f argfile.conf ]]; then
             bud_opts+=("--build-arg-file" "argfile.conf")
@@ -124,10 +133,19 @@ tasks:
             buildah_opts+=("--storage-opt" "overlay.mount_program=$(command -v fuse-overlayfs)")
           fi
 
+          img_registry=$( (grep "LABEL image.registry=" Containerfile || echo) | tail -n 1 | cut -d '=' -f 2-)
+          img_name=$( (grep "LABEL image.name=" Containerfile || echo) | tail -n 1 | cut -d '=' -f 2-)
+          img_org=$(cut -d '/' -f 1 <<<"$img_name")
+
           bud_opts=(
             --layers
             -f "Containerfile"
           )
+
+          if [[ ! -z "${img_registry}" ]] && [[ ! -z "${img_org}" ]]; then
+            bud_opts+=("--cache-to" "${img_registry}/${img_org}/build-cache")
+            bud_opts+=("--cache-from" "${img_registry}/${img_org}/build-cache")
+          fi
 
           if [[ -f argfile.conf ]]; then
             bud_opts+=("--build-arg-file" "argfile.conf")
@@ -164,10 +182,19 @@ tasks:
             buildah_opts+=("--storage-opt" "overlay.mount_program=$(command -v fuse-overlayfs)")
           fi
 
+          img_registry=$( (grep "LABEL image.registry=" Containerfile || echo) | tail -n 1 | cut -d '=' -f 2-)
+          img_name=$( (grep "LABEL image.name=" Containerfile || echo) | tail -n 1 | cut -d '=' -f 2-)
+          img_org=$(cut -d '/' -f 1 <<<"$img_name")
+
           bud_opts=(
             --layers
             -f "Containerfile"
           )
+
+          if [[ ! -z "${img_registry}" ]] && [[ ! -z "${img_org}" ]]; then
+            bud_opts+=("--cache-to" "${img_registry}/${img_org}/build-cache")
+            bud_opts+=("--cache-from" "${img_registry}/${img_org}/build-cache")
+          fi
 
           if [[ -f argfile.conf ]]; then
             bud_opts+=("--build-arg-file" "argfile.conf")
@@ -204,10 +231,19 @@ tasks:
             buildah_opts+=("--storage-opt" "overlay.mount_program=$(command -v fuse-overlayfs)")
           fi
 
+          img_registry=$( (grep "LABEL image.registry=" Containerfile || echo) | tail -n 1 | cut -d '=' -f 2-)
+          img_name=$( (grep "LABEL image.name=" Containerfile || echo) | tail -n 1 | cut -d '=' -f 2-)
+          img_org=$(cut -d '/' -f 1 <<<"$img_name")
+
           bud_opts=(
             --layers
             -f "Containerfile"
           )
+
+          if [[ ! -z "${img_registry}" ]] && [[ ! -z "${img_org}" ]]; then
+            bud_opts+=("--cache-to" "${img_registry}/${img_org}/build-cache")
+            bud_opts+=("--cache-from" "${img_registry}/${img_org}/build-cache")
+          fi
 
           if [[ -f argfile.conf ]]; then
             bud_opts+=("--build-arg-file" "argfile.conf")
@@ -244,10 +280,19 @@ tasks:
             buildah_opts+=("--storage-opt" "overlay.mount_program=$(command -v fuse-overlayfs)")
           fi
 
+          img_registry=$( (grep "LABEL image.registry=" Containerfile || echo) | tail -n 1 | cut -d '=' -f 2-)
+          img_name=$( (grep "LABEL image.name=" Containerfile || echo) | tail -n 1 | cut -d '=' -f 2-)
+          img_org=$(cut -d '/' -f 1 <<<"$img_name")
+
           bud_opts=(
             --layers
             -f "Containerfile"
           )
+
+          if [[ ! -z "${img_registry}" ]] && [[ ! -z "${img_org}" ]]; then
+            bud_opts+=("--cache-to" "${img_registry}/${img_org}/build-cache")
+            bud_opts+=("--cache-from" "${img_registry}/${img_org}/build-cache")
+          fi
 
           if [[ -f argfile.conf ]]; then
             bud_opts+=("--build-arg-file" "argfile.conf")
@@ -284,10 +329,19 @@ tasks:
             buildah_opts+=("--storage-opt" "overlay.mount_program=$(command -v fuse-overlayfs)")
           fi
 
+          img_registry=$( (grep "LABEL image.registry=" Containerfile || echo) | tail -n 1 | cut -d '=' -f 2-)
+          img_name=$( (grep "LABEL image.name=" Containerfile || echo) | tail -n 1 | cut -d '=' -f 2-)
+          img_org=$(cut -d '/' -f 1 <<<"$img_name")
+
           bud_opts=(
             --layers
             -f "Containerfile"
           )
+
+          if [[ ! -z "${img_registry}" ]] && [[ ! -z "${img_org}" ]]; then
+            bud_opts+=("--cache-to" "${img_registry}/${img_org}/build-cache")
+            bud_opts+=("--cache-from" "${img_registry}/${img_org}/build-cache")
+          fi
 
           if [[ -f argfile.conf ]]; then
             bud_opts+=("--build-arg-file" "argfile.conf")
