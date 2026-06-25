@@ -76,7 +76,9 @@ if ! command -v buildah >/dev/null 2>&1; then
   exit 1
 fi
 
-buildah_opts=()
+buildah_opts=(
+	--log-level debug
+)
 
 if command -v fuse-overlayfs >/dev/null 2>&1; then
   buildah_opts+=("--storage-opt" "overlay.mount_program=$(command -v fuse-overlayfs)")
