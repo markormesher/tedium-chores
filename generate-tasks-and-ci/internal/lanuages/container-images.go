@@ -175,8 +175,8 @@ bud_opts=(
 )
 
 if [[ ! -z "${img_registry}" ]] && [[ ! -z "${img_name}" ]]; then
-  bud_opts+=("--cache-to" "${img_registry}/${img_name}:cache")
-  bud_opts+=("--cache-from" "${img_registry}/${img_name}:cache")
+  bud_opts+=("--cache-to" "${img_registry}/${img_name}")
+  bud_opts+=("--cache-from" "${img_registry}/${img_name}")
 fi
 
 if [[ -f argfile.conf ]]; then
