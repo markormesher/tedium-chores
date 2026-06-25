@@ -174,7 +174,7 @@ bud_opts=(
   -f "` + p.ContainerFileName + `"
 )
 
-if [[ ! -z "${img_registry}" ]] && [[ ! -z "${img_org}" ]]; then
+if [[ ! -z "${img_registry}" ]] && [[ ! -z "${img_name}" ]]; then
   bud_opts+=("--cache-to" "${img_registry}/${img_name}:cache")
   bud_opts+=("--cache-from" "${img_registry}/${img_name}:cache")
 fi
