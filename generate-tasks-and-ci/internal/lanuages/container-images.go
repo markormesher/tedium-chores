@@ -161,6 +161,7 @@ func (p *ContainerImageProject) addBuildTask(taskFile *task.TaskFile) error {
 		Commands: []task.Command{
 			{Command: `
 set -euo pipefail
+set -x
 
 ` + p.builderSetup() + `
 
