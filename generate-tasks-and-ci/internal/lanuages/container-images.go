@@ -166,16 +166,17 @@ set -euo pipefail
 
 img_registry=$( (grep "LABEL image.registry=" ` + p.ContainerFileName + ` || echo) | tail -n 1 | cut -d '=' -f 2-)
 img_name=$( (grep "LABEL image.name=" ` + p.ContainerFileName + ` || echo) | tail -n 1 | cut -d '=' -f 2-)
-img_org=$(cut -d '/' -f 1 <<<"$img_name")
 
 bud_opts=(
   --layers
+  --timestamp 0
+  --omit-history
   -f "` + p.ContainerFileName + `"
 )
 
 if [[ ! -z "${img_registry}" ]] && [[ ! -z "${img_org}" ]]; then
-  bud_opts+=("--cache-to" "${img_registry}/${img_org}/build-cache")
-  bud_opts+=("--cache-from" "${img_registry}/${img_org}/build-cache")
+  bud_opts+=("--cache-to" "${img_registry}/${img_name}:cache")
+  bud_opts+=("--cache-from" "${img_registry}/${img_name}:cache")
 fi
 
 if [[ -f argfile.conf ]]; then
