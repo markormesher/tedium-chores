@@ -76,7 +76,9 @@ if ! command -v buildah >/dev/null 2>&1; then
   exit 1
 fi
 
-buildah_opts=()
+buildah_opts=(
+	--log-level debug
+)
 
 if command -v fuse-overlayfs >/dev/null 2>&1; then
   buildah_opts+=("--storage-opt" "overlay.mount_program=$(command -v fuse-overlayfs)")
@@ -161,13 +163,24 @@ func (p *ContainerImageProject) addBuildTask(taskFile *task.TaskFile) error {
 		Commands: []task.Command{
 			{Command: `
 set -euo pipefail
+set -x
 
 ` + p.builderSetup() + `
 
+img_registry=$( (grep "LABEL image.registry=" ` + p.ContainerFileName + ` || echo) | tail -n 1 | cut -d '=' -f 2-)
+img_name=$( (grep "LABEL image.name=" ` + p.ContainerFileName + ` || echo) | tail -n 1 | cut -d '=' -f 2-)
+
 bud_opts=(
   --layers
+  --timestamp 0
+  --omit-history
   -f "` + p.ContainerFileName + `"
 )
+
+if [[ ! -z "${img_registry}" ]] && [[ ! -z "${img_name}" ]]; then
+  bud_opts+=("--cache-to" "${img_registry}/${img_name}")
+  bud_opts+=("--cache-from" "${img_registry}/${img_name}")
+fi
 
 if [[ -f argfile.conf ]]; then
   bud_opts+=("--build-arg-file" "argfile.conf")
