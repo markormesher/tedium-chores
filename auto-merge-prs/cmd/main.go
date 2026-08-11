@@ -325,15 +325,14 @@ func deleteBranch(pr PullRequest) error {
 
 		data, status, err := doRequest("DELETE", url, nil)
 		if err != nil {
-			return fmt.Errorf("merge failed: %w", err)
+			return fmt.Errorf("delete failed: %w", err)
 		}
 
 		if status >= 200 && status <= 299 {
 			return nil
-		} else if status >= 400 && status <= 499 {
-			time.Sleep(5 * time.Second)
 		} else {
 			slog.Error("delete failed", "status", status, "body", string(data))
+			time.Sleep(5 * time.Second)
 		}
 	}
 
