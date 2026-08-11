@@ -310,25 +310,34 @@ func mergePR(pr PullRequest) error {
 }
 
 func deleteBranch(pr PullRequest) error {
-	var url string
-	switch apiType {
-	case "gitea":
-		url = fmt.Sprintf("%s/repos/%s/%s/branches/%s", apiBase, repoOwner, repoName, neturl.PathEscape(pr.Head.Ref))
+	tries := 3
+	for tries > 0 {
+		tries--
 
-	case "github":
-		url = fmt.Sprintf("%s/repos/%s/%s/git/refs/%s", apiBase, repoOwner, repoName, neturl.PathEscape(pr.Head.Ref))
+		var url string
+		switch apiType {
+		case "gitea":
+			url = fmt.Sprintf("%s/repos/%s/%s/branches/%s", apiBase, repoOwner, repoName, neturl.PathEscape(pr.Head.Ref))
+
+		case "github":
+			url = fmt.Sprintf("%s/repos/%s/%s/git/refs/%s", apiBase, repoOwner, repoName, neturl.PathEscape(pr.Head.Ref))
+		}
+
+		data, status, err := doRequest("DELETE", url, nil)
+		if err != nil {
+			return fmt.Errorf("merge failed: %w", err)
+		}
+
+		if status >= 200 && status <= 299 {
+			return nil
+		} else if status >= 400 && status <= 499 {
+			time.Sleep(5 * time.Second)
+		} else {
+			slog.Error("delete failed", "status", status, "body", string(data))
+		}
 	}
 
-	data, status, err := doRequest("DELETE", url, nil)
-	if err != nil {
-		return fmt.Errorf("merge failed: %w", err)
-	}
-
-	if status < 200 || status > 299 {
-		return fmt.Errorf("delete failed, status %d, message: %s", status, string(data))
-	}
-
-	return nil
+	return fmt.Errorf("delete failed after multiple retries")
 }
 
 func shouldMerge(protected bool, requiredContexts []string, statuses ParsedCommitStatuses, apiType string) (bool, string) {
