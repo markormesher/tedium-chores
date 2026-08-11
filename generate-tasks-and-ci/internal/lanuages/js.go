@@ -124,15 +124,22 @@ func (p *JSProject) addCacheKeyTask(taskFile *task.TaskFile) error {
 }
 
 func (p *JSProject) addDepsTask(taskFile *task.TaskFile) error {
-	cmd := ""
+	cmds := []task.Command{}
 
 	switch p.PackageManagerCmd {
 
 	case "pnpm":
-		cmd = "pnpm install --frozen-lockfile"
+		cmds = append(
+			cmds,
+			task.Command{Command: "pnpm install --frozen-lockfile"},
+			task.Command{Command: "pnpm peers check"},
+		)
 
 	case "yarn":
-		cmd = "yarn install --immutable"
+		cmds = append(
+			cmds,
+			task.Command{Command: "yarn install --immutable"},
+		)
 
 	default:
 		return fmt.Errorf("encountered unsupported package manager '%s' when generating deps-js task", p.PackageManagerCmd)
@@ -141,9 +148,7 @@ func (p *JSProject) addDepsTask(taskFile *task.TaskFile) error {
 	name := fmt.Sprintf("deps-js-%s", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
-		Commands: []task.Command{
-			{Command: cmd},
-		},
+		Commands:  cmds,
 	}
 
 	return nil
