@@ -24,6 +24,8 @@ var (
 
 	maxMergeableRetries = 5
 	mergeableRetryDelay = time.Second * 15
+	maxDeleteRetries    = 5
+	deleteRetryDelay    = time.Second * 30
 )
 
 func main() {
@@ -97,23 +99,19 @@ PRLoop:
 			continue
 		}
 
-		slog.Info("attempting to merge PR...")
 		err = mergePR(pr)
 		if err != nil {
 			slog.Info("error merging PR; will continue with others", "error", err)
 			anyFailed = true
 			continue PRLoop
 		}
-		slog.Info("merged")
 
-		slog.Info("deleting branch...")
 		err = deleteBranch(pr)
 		if err != nil {
 			slog.Info("error deleting branch; will continue with others", "error", err)
 			anyFailed = true
 			continue PRLoop
 		}
-		slog.Info("deleted")
 
 		// pause to make sure mergability of other PRs is re-evaluated by the platform
 		time.Sleep(time.Second * 30)
@@ -271,6 +269,8 @@ func getPRStatuses(pr PullRequest) (ParsedCommitStatuses, error) {
 }
 
 func mergePR(pr PullRequest) error {
+	slog.Info("attempting to merge PR")
+
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/merge", apiBase, repoOwner, repoName, pr.Number)
 
 	var body any
@@ -306,14 +306,13 @@ func mergePR(pr PullRequest) error {
 		return fmt.Errorf("merge failed, status %d, message: %s", status, string(data))
 	}
 
+	slog.Info("PR merged")
 	return nil
 }
 
 func deleteBranch(pr PullRequest) error {
-	tries := 3
-	for tries > 0 {
-		tries--
-
+	slog.Info("deleting branch", "ref", pr.Head.Ref)
+	for range maxDeleteRetries {
 		var url string
 		switch apiType {
 		case "gitea":
@@ -329,10 +328,11 @@ func deleteBranch(pr PullRequest) error {
 		}
 
 		if status >= 200 && status <= 299 {
+			slog.Info("deleted branch", "ref", pr.Head.Ref)
 			return nil
 		} else {
-			slog.Error("delete failed", "status", status, "body", string(data))
-			time.Sleep(5 * time.Second)
+			slog.Error("delete failed", "ref", pr.Head.Ref, "status", status, "body", string(data))
+			time.Sleep(deleteRetryDelay)
 		}
 	}
 
