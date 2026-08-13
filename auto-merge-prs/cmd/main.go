@@ -319,7 +319,7 @@ func deleteBranch(pr PullRequest) error {
 			url = fmt.Sprintf("%s/repos/%s/%s/branches/%s", apiBase, repoOwner, repoName, neturl.PathEscape(pr.Head.Ref))
 
 		case "github":
-			url = fmt.Sprintf("%s/repos/%s/%s/git/refs/%s", apiBase, repoOwner, repoName, neturl.PathEscape(pr.Head.Ref))
+			url = fmt.Sprintf("%s/repos/%s/%s/git/refs/heads/%s", apiBase, repoOwner, repoName, neturl.PathEscape(pr.Head.Ref))
 		}
 
 		data, status, err := doRequest("DELETE", url, nil)
