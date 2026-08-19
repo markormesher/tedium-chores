@@ -221,7 +221,7 @@ echo "All jobs passed"
 		job := ci.ActionsJobConfig{
 			RunsOn: "ubuntu-latest",
 			Needs: []*regexp.Regexp{
-				regexp.MustCompile(`^check\-.*`),
+				regexp.MustCompile(`^check\-` + project + `\-.*`),
 			},
 			Permissions: map[string]string{},
 			Steps: []ci.ActionsJobStepConfig{
