@@ -116,7 +116,7 @@ func (p *GoverterProject) AddTasks(taskFile *task.TaskFile) error {
 }
 
 func (p *GoverterProject) addGenTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("gen-goverter-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("gen-%s-goverter", util.PathToSafeName(p.RelativePath))
 	safePaths := make([]string, len(p.GoverterFilePaths))
 	for i, path := range p.GoverterFilePaths {
 		safePaths[i] = strconv.Quote(path)

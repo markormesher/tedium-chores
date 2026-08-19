@@ -95,15 +95,6 @@ func updateTaskfile(projectPath string) {
 		}
 	}
 
-	// one-off changes for specific tasks
-	for name, t := range taskFile.Tasks {
-		if name == "cachekey" {
-			t.Commands = append([]task.Command{
-				{Command: `rm -f "{{.ROOT_DIR}}/.task-meta-cachekey"*`},
-			}, t.Commands...)
-		}
-	}
-
 	// clean up output
 
 	multipleLineBreaks := regexp.MustCompile(`\n\n+`)

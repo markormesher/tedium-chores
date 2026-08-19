@@ -141,64 +141,87 @@ echo "All jobs passed"
 		},
 	}
 
-	// language check tasks
-	langs := []string{"buf", "go", "js", "sqlc"}
-	langTasks := []string{"cacheload", "deps", "lint", "test", "cachesave"}
-	for _, lang := range langs {
-		// TODO: consider RUNTIME_ENV and RUNTIME_PACKAGES
-
-		image, err := getImageForLanguageTask(resourceSet, lang)
-		if err != nil {
-			slog.Error("unable to get image to language task", "error", err)
-			os.Exit(1)
+	// collect project -> languages mapping
+	projectsToLanguages := map[string]map[string]struct{}{}
+	for _, taskName := range taskNames {
+		chunks := strings.Split(taskName, "-")
+		if len(chunks) < 2 {
+			continue
 		}
 
-		job := ci.ActionsJobConfig{
-			RunsOn: "ubuntu-latest",
-			Container: ci.ActionsJobContainerConfig{
-				Image: image,
-			},
-			Steps: []ci.ActionsJobStepConfig{
-				{Uses: resourceSet.ciResourcesAction},
-			},
+		projectName := chunks[1]
+		if _, ok := projectsToLanguages[projectName]; !ok {
+			projectsToLanguages[projectName] = map[string]struct{}{}
 		}
 
-		// handle special cases
-		if lang == "js" {
-			job.Steps = append(job.Steps, ci.ActionsJobStepConfig{
-				Run: "npm install -g --force yarn pnpm",
-			})
-		}
-
-		langHasTasks := false
-		for _, langTask := range langTasks {
-			taskName := fmt.Sprintf("%s-%s", langTask, lang)
-			if slices.Contains(taskNames, taskName) {
-				langHasTasks = true
-				step := ci.ActionsJobStepConfig{
-					Environment: map[string]string{},
-					Run:         fmt.Sprintf("./task -s %s", taskName),
-				}
-
-				if strings.HasPrefix(taskName, "cache") {
-					step.Environment["CI_CACHE_TOKEN"] = "${{ secrets.CI_CACHE_TOKEN }}"
-				}
-
-				job.Steps = append(job.Steps, step)
-			}
-		}
-
-		if langHasTasks {
-			newConfig.Jobs["check-"+lang] = job
+		if len(chunks) == 3 {
+			langName := chunks[2]
+			projectsToLanguages[projectName][langName] = struct{}{}
 		}
 	}
 
-	// container image tasks
-	if slices.Contains(taskNames, "imgrefs") {
+	// create per-project, per-language check tasks
+	checkTasks := []string{"cacheload", "deps", "lint", "test", "cachesave"}
+	for project, languages := range projectsToLanguages {
+		for language := range languages {
+			job := ci.ActionsJobConfig{
+				RunsOn:    "ubuntu-latest",
+				Container: ci.ActionsJobContainerConfig{},
+				Steps: []ci.ActionsJobStepConfig{
+					{Uses: resourceSet.ciResourcesAction},
+				},
+			}
+
+			// handle language-specific setup steps
+			switch language {
+			case "js":
+				job.Steps = append(job.Steps, ci.ActionsJobStepConfig{
+					Run: "npm install -g --force yarn pnpm",
+				})
+			}
+
+			hasAnyCheckTasks := false
+			for _, checkTask := range checkTasks {
+				taskName := fmt.Sprintf("%s-%s-%s", checkTask, project, language)
+				if slices.Contains(taskNames, taskName) {
+					hasAnyCheckTasks = true
+
+					step := ci.ActionsJobStepConfig{
+						Environment: map[string]string{},
+						Run:         fmt.Sprintf("./task -s %s", taskName),
+					}
+
+					if strings.HasPrefix(taskName, "cache") {
+						step.Environment["CI_CACHE_TOKEN"] = "${{ secrets.CI_CACHE_TOKEN }}"
+					}
+
+					job.Steps = append(job.Steps, step)
+				}
+			}
+
+			// bail out if this project/language combo doesn't actually have any check tasks
+			if !hasAnyCheckTasks {
+				continue
+			}
+
+			image, err := getImageForLanguageTask(resourceSet, language)
+			if err != nil {
+				slog.Error("unable to get image to language task", "error", err)
+				os.Exit(1)
+			}
+			job.Container.Image = image
+
+			newConfig.Jobs[fmt.Sprintf("check-%s-%s", project, language)] = job
+		}
+	}
+
+	// create per-project image build tasks
+	imgTasks := []string{"imgrefs", "imgbuild", "imgpush"}
+	for project := range projectsToLanguages {
 		job := ci.ActionsJobConfig{
 			RunsOn: "ubuntu-latest",
 			Needs: []*regexp.Regexp{
-				regexp.MustCompile(`^check\-.*`),
+				regexp.MustCompile(`^check\-` + project + `\-.*`),
 			},
 			Permissions: map[string]string{},
 			Steps: []ci.ActionsJobStepConfig{
@@ -218,13 +241,27 @@ echo "All jobs passed"
 			})
 		}
 
-		for _, t := range []string{"imgrefs", "imgbuild", "imgpush"} {
-			job.Steps = append(job.Steps, ci.ActionsJobStepConfig{
-				Run: fmt.Sprintf("./task -s %s", t),
-			})
+		hasAnyImgTasks := false
+		for _, imgTask := range imgTasks {
+			taskName := fmt.Sprintf("%s-%s", imgTask, project)
+			if slices.Contains(taskNames, taskName) {
+				hasAnyImgTasks = true
+
+				step := ci.ActionsJobStepConfig{
+					Environment: map[string]string{},
+					Run:         fmt.Sprintf("./task -s %s", taskName),
+				}
+
+				job.Steps = append(job.Steps, step)
+			}
 		}
 
-		newConfig.Jobs["img-build-push"] = job
+		// bail out if this project doesn't actually have any img tasks
+		if !hasAnyImgTasks {
+			continue
+		}
+
+		newConfig.Jobs[fmt.Sprintf("img-%s", project)] = job
 	}
 
 	// resolve needs

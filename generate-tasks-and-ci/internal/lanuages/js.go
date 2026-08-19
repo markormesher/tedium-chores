@@ -114,7 +114,7 @@ func (p *JSProject) AddTasks(taskFile *task.TaskFile) error {
 }
 
 func (p *JSProject) addCacheKeyTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("cachekey-js-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("cachekey-%s-js", util.PathToSafeName(p.RelativePath))
 
 	nonAlphanumeric := regexp.MustCompile(`[^a-zA-Z0-9 ]+`)
 	projectName := nonAlphanumeric.ReplaceAllString(path.Base(p.ParentPath), "")
@@ -149,11 +149,11 @@ fi
 }
 
 func (p *JSProject) addCacheLoadTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("cacheload-js-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("cacheload-%s-js", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Dependencies: []string{
-			fmt.Sprintf("cachekey-js-%s", util.PathToSafeName(p.RelativePath)),
+			fmt.Sprintf("cachekey-%s-js", util.PathToSafeName(p.RelativePath)),
 		},
 		Commands: []task.Command{
 			{Command: cacheLoadCommand()},
@@ -164,7 +164,7 @@ func (p *JSProject) addCacheLoadTask(taskFile *task.TaskFile) error {
 }
 
 func (p *JSProject) addCacheSaveTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("cachesave-js-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("cachesave-%s-js", util.PathToSafeName(p.RelativePath))
 
 	cachePathCmd := ""
 	switch p.PackageManagerCmd {
@@ -181,7 +181,7 @@ func (p *JSProject) addCacheSaveTask(taskFile *task.TaskFile) error {
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Dependencies: []string{
-			fmt.Sprintf("cachekey-js-%s", util.PathToSafeName(p.RelativePath)),
+			fmt.Sprintf("cachekey-%s-js", util.PathToSafeName(p.RelativePath)),
 		},
 		Commands: []task.Command{
 			{Command: cachePathCmd + ` > .task-meta-cache-paths`},
@@ -214,7 +214,7 @@ func (p *JSProject) addDepsTask(taskFile *task.TaskFile) error {
 		return fmt.Errorf("encountered unsupported package manager '%s' when generating deps-js task", p.PackageManagerCmd)
 	}
 
-	name := fmt.Sprintf("deps-js-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("deps-%s-js", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands:  cmds,
@@ -228,7 +228,7 @@ func (p *JSProject) addLintTask(taskFile *task.TaskFile) error {
 		return nil
 	}
 
-	name := fmt.Sprintf("lint-js-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("lint-%s-js", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
@@ -244,7 +244,7 @@ func (p *JSProject) addLintFixTask(taskFile *task.TaskFile) error {
 		return nil
 	}
 
-	name := fmt.Sprintf("lintfix-js-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("lintfix-%s-js", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
@@ -260,7 +260,7 @@ func (p *JSProject) addTestTask(taskFile *task.TaskFile) error {
 		return nil
 	}
 
-	name := fmt.Sprintf("test-js-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("test-%s-js", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{

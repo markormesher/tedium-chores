@@ -65,7 +65,7 @@ func (p *SQLCProject) AddTasks(taskFile *task.TaskFile) error {
 }
 
 func (p *SQLCProject) addGenTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("gen-sqlc-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("gen-%s-sqlc", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{

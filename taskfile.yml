@@ -8,54 +8,329 @@ includes:
 tasks:
   cachekey:
     cmds:
-      - cmd: rm -f "{{.ROOT_DIR}}/.task-meta-cachekey"*
-      - task: cachekey-go-automergeprs
-      - task: cachekey-go-generatetasksandci
-      - task: cachekey-go-updateimagelabels
-  cachekey-go:
+      - task: cachekey-automergeprs-go
+      - task: cachekey-generatetasksandci-go
+      - task: cachekey-updateimagelabels-go
+  cachekey-automergeprs:
     cmds:
-      - task: cachekey-go-automergeprs
-      - task: cachekey-go-generatetasksandci
-      - task: cachekey-go-updateimagelabels
-  cachekey-go-automergeprs:
+      - task: cachekey-automergeprs-go
+  cachekey-automergeprs-go:
     dir: '{{.ROOT_DIR}}/auto-merge-prs'
+    generates:
+      - .task-meta-cache-key
     cmds:
-      - cmd: sha256sum go.mod | awk '{print $1}' >> "{{.ROOT_DIR}}/.task-meta-cachekey-go"
-      - cmd: if [[ -f go.sum ]]; then sha256sum go.sum | awk '{print $1}' >> "{{.ROOT_DIR}}/.task-meta-cachekey-go"; fi
-  cachekey-go-generatetasksandci:
+      - cmd: |-
+          if [ ${CI:+1} ]; then
+            PROJECT=""
+
+            DEPS_SHA=$(cat go.mod | sha256sum | awk '{ print $1 }')
+
+            if [[ -f go.sum ]]; then
+              LOCK_SHA=$(cat go.sum | sha256sum | awk '{ print $1 }')
+            else
+              LOCK_SHA="nolock"
+            fi
+
+            echo "${PROJECT}-go-v1/${DEPS_SHA}/${LOCK_SHA}" > .task-meta-cache-key
+          fi
+  cachekey-generatetasksandci:
+    cmds:
+      - task: cachekey-generatetasksandci-go
+  cachekey-generatetasksandci-go:
     dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
+    generates:
+      - .task-meta-cache-key
     cmds:
-      - cmd: sha256sum go.mod | awk '{print $1}' >> "{{.ROOT_DIR}}/.task-meta-cachekey-go"
-      - cmd: if [[ -f go.sum ]]; then sha256sum go.sum | awk '{print $1}' >> "{{.ROOT_DIR}}/.task-meta-cachekey-go"; fi
-  cachekey-go-updateimagelabels:
+      - cmd: |-
+          if [ ${CI:+1} ]; then
+            PROJECT=""
+
+            DEPS_SHA=$(cat go.mod | sha256sum | awk '{ print $1 }')
+
+            if [[ -f go.sum ]]; then
+              LOCK_SHA=$(cat go.sum | sha256sum | awk '{ print $1 }')
+            else
+              LOCK_SHA="nolock"
+            fi
+
+            echo "${PROJECT}-go-v1/${DEPS_SHA}/${LOCK_SHA}" > .task-meta-cache-key
+          fi
+  cachekey-updateimagelabels:
+    cmds:
+      - task: cachekey-updateimagelabels-go
+  cachekey-updateimagelabels-go:
     dir: '{{.ROOT_DIR}}/update-image-labels'
+    generates:
+      - .task-meta-cache-key
     cmds:
-      - cmd: sha256sum go.mod | awk '{print $1}' >> "{{.ROOT_DIR}}/.task-meta-cachekey-go"
-      - cmd: if [[ -f go.sum ]]; then sha256sum go.sum | awk '{print $1}' >> "{{.ROOT_DIR}}/.task-meta-cachekey-go"; fi
+      - cmd: |-
+          if [ ${CI:+1} ]; then
+            PROJECT=""
+
+            DEPS_SHA=$(cat go.mod | sha256sum | awk '{ print $1 }')
+
+            if [[ -f go.sum ]]; then
+              LOCK_SHA=$(cat go.sum | sha256sum | awk '{ print $1 }')
+            else
+              LOCK_SHA="nolock"
+            fi
+
+            echo "${PROJECT}-go-v1/${DEPS_SHA}/${LOCK_SHA}" > .task-meta-cache-key
+          fi
+  cacheload:
+    cmds:
+      - task: cacheload-automergeprs-go
+      - task: cacheload-generatetasksandci-go
+      - task: cacheload-updateimagelabels-go
+  cacheload-automergeprs:
+    cmds:
+      - task: cacheload-automergeprs-go
+  cacheload-automergeprs-go:
+    dir: '{{.ROOT_DIR}}/auto-merge-prs'
+    deps:
+      - cachekey-automergeprs-go
+    cmds:
+      - cmd: |-
+          if [[ -n ${CI_CACHE_TOKEN+x} ]] && [[ -f ".task-meta-cache-key" ]]; then
+            request_key=$(cat ".task-meta-cache-key" | tr -d '\r\n')
+            start_ts=$(date +%s)
+            header_file=$(mktemp)
+            cache_file=$(mktemp)
+
+            echo "loading cache..."
+            echo "request key: ${request_key}"
+            if curl -fsSL -D "${header_file}" -H "authorization: Bearer ${CI_CACHE_TOKEN}" "https://ci-cache.markormesher.co.uk/cache/${request_key}" -o "${cache_file}"; then
+              actual_key=$(cat "${header_file}" | grep -i x-cache-key | cut -d ' ' -f 2 | tr -d '\r\n')
+              size=$(du -h "${cache_file}" | awk '{ print $1 }')
+              echo "received key: ${actual_key}"
+              echo "received size: ${size}"
+
+              if [[ "${actual_key}" == "${request_key}" ]]; then
+                touch .task-meta-cache-exact-match
+              fi
+
+              echo "unpacking cache..."
+              tar xzP -f "${cache_file}" || true
+            else
+              echo "no cache loaded"
+            fi
+
+            rm -f "${cache_file}" "${header_file}"
+            end_ts=$(date +%s)
+            echo "loading cache took $(( $end_ts - $start_ts ))s"
+          fi
+  cacheload-generatetasksandci:
+    cmds:
+      - task: cacheload-generatetasksandci-go
+  cacheload-generatetasksandci-go:
+    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
+    deps:
+      - cachekey-generatetasksandci-go
+    cmds:
+      - cmd: |-
+          if [[ -n ${CI_CACHE_TOKEN+x} ]] && [[ -f ".task-meta-cache-key" ]]; then
+            request_key=$(cat ".task-meta-cache-key" | tr -d '\r\n')
+            start_ts=$(date +%s)
+            header_file=$(mktemp)
+            cache_file=$(mktemp)
+
+            echo "loading cache..."
+            echo "request key: ${request_key}"
+            if curl -fsSL -D "${header_file}" -H "authorization: Bearer ${CI_CACHE_TOKEN}" "https://ci-cache.markormesher.co.uk/cache/${request_key}" -o "${cache_file}"; then
+              actual_key=$(cat "${header_file}" | grep -i x-cache-key | cut -d ' ' -f 2 | tr -d '\r\n')
+              size=$(du -h "${cache_file}" | awk '{ print $1 }')
+              echo "received key: ${actual_key}"
+              echo "received size: ${size}"
+
+              if [[ "${actual_key}" == "${request_key}" ]]; then
+                touch .task-meta-cache-exact-match
+              fi
+
+              echo "unpacking cache..."
+              tar xzP -f "${cache_file}" || true
+            else
+              echo "no cache loaded"
+            fi
+
+            rm -f "${cache_file}" "${header_file}"
+            end_ts=$(date +%s)
+            echo "loading cache took $(( $end_ts - $start_ts ))s"
+          fi
+  cacheload-updateimagelabels:
+    cmds:
+      - task: cacheload-updateimagelabels-go
+  cacheload-updateimagelabels-go:
+    dir: '{{.ROOT_DIR}}/update-image-labels'
+    deps:
+      - cachekey-updateimagelabels-go
+    cmds:
+      - cmd: |-
+          if [[ -n ${CI_CACHE_TOKEN+x} ]] && [[ -f ".task-meta-cache-key" ]]; then
+            request_key=$(cat ".task-meta-cache-key" | tr -d '\r\n')
+            start_ts=$(date +%s)
+            header_file=$(mktemp)
+            cache_file=$(mktemp)
+
+            echo "loading cache..."
+            echo "request key: ${request_key}"
+            if curl -fsSL -D "${header_file}" -H "authorization: Bearer ${CI_CACHE_TOKEN}" "https://ci-cache.markormesher.co.uk/cache/${request_key}" -o "${cache_file}"; then
+              actual_key=$(cat "${header_file}" | grep -i x-cache-key | cut -d ' ' -f 2 | tr -d '\r\n')
+              size=$(du -h "${cache_file}" | awk '{ print $1 }')
+              echo "received key: ${actual_key}"
+              echo "received size: ${size}"
+
+              if [[ "${actual_key}" == "${request_key}" ]]; then
+                touch .task-meta-cache-exact-match
+              fi
+
+              echo "unpacking cache..."
+              tar xzP -f "${cache_file}" || true
+            else
+              echo "no cache loaded"
+            fi
+
+            rm -f "${cache_file}" "${header_file}"
+            end_ts=$(date +%s)
+            echo "loading cache took $(( $end_ts - $start_ts ))s"
+          fi
+  cachesave:
+    cmds:
+      - task: cachesave-automergeprs-go
+      - task: cachesave-generatetasksandci-go
+      - task: cachesave-updateimagelabels-go
+  cachesave-automergeprs:
+    cmds:
+      - task: cachesave-automergeprs-go
+  cachesave-automergeprs-go:
+    dir: '{{.ROOT_DIR}}/auto-merge-prs'
+    deps:
+      - cachekey-automergeprs-go
+    cmds:
+      - cmd: echo "$(go env GOMODCACHE) $(go env GOCACHE)" > .task-meta-cache-paths
+      - cmd: |-
+          if [[ -n ${CI_CACHE_TOKEN+x} ]] && [[ -f .task-meta-cache-key ]] && [[ -f .task-meta-cache-paths ]]; then
+            if [[ -f .task-meta-cache-exact-match ]]; then
+              echo "skipping re-upload because an exact match was returned from the cache"
+              exit 0
+            fi
+
+            request_key=$(cat ".task-meta-cache-key")
+            start_ts=$(date +%s)
+            cache_file=$(mktemp)
+
+            echo "packing cache..."
+            tar czP -f "${cache_file}" $(cat .task-meta-cache-paths)
+            size=$(du -h "${cache_file}" | awk '{ print $1 }')
+
+            echo "uploading cache (${size})..."
+            if curl -fsSL -H "authorization: Bearer ${CI_CACHE_TOKEN}" -X PUT "https://ci-cache.markormesher.co.uk/cache/${request_key}" --data-binary "@${cache_file}"; then
+              echo "uploaded cache"
+            else
+              echo "error saving cache"
+            fi
+
+            rm -f "${cache_file}"
+            end_ts=$(date +%s)
+            echo "saving cache took $(( $end_ts - $start_ts ))s"
+          fi
+  cachesave-generatetasksandci:
+    cmds:
+      - task: cachesave-generatetasksandci-go
+  cachesave-generatetasksandci-go:
+    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
+    deps:
+      - cachekey-generatetasksandci-go
+    cmds:
+      - cmd: echo "$(go env GOMODCACHE) $(go env GOCACHE)" > .task-meta-cache-paths
+      - cmd: |-
+          if [[ -n ${CI_CACHE_TOKEN+x} ]] && [[ -f .task-meta-cache-key ]] && [[ -f .task-meta-cache-paths ]]; then
+            if [[ -f .task-meta-cache-exact-match ]]; then
+              echo "skipping re-upload because an exact match was returned from the cache"
+              exit 0
+            fi
+
+            request_key=$(cat ".task-meta-cache-key")
+            start_ts=$(date +%s)
+            cache_file=$(mktemp)
+
+            echo "packing cache..."
+            tar czP -f "${cache_file}" $(cat .task-meta-cache-paths)
+            size=$(du -h "${cache_file}" | awk '{ print $1 }')
+
+            echo "uploading cache (${size})..."
+            if curl -fsSL -H "authorization: Bearer ${CI_CACHE_TOKEN}" -X PUT "https://ci-cache.markormesher.co.uk/cache/${request_key}" --data-binary "@${cache_file}"; then
+              echo "uploaded cache"
+            else
+              echo "error saving cache"
+            fi
+
+            rm -f "${cache_file}"
+            end_ts=$(date +%s)
+            echo "saving cache took $(( $end_ts - $start_ts ))s"
+          fi
+  cachesave-updateimagelabels:
+    cmds:
+      - task: cachesave-updateimagelabels-go
+  cachesave-updateimagelabels-go:
+    dir: '{{.ROOT_DIR}}/update-image-labels'
+    deps:
+      - cachekey-updateimagelabels-go
+    cmds:
+      - cmd: echo "$(go env GOMODCACHE) $(go env GOCACHE)" > .task-meta-cache-paths
+      - cmd: |-
+          if [[ -n ${CI_CACHE_TOKEN+x} ]] && [[ -f .task-meta-cache-key ]] && [[ -f .task-meta-cache-paths ]]; then
+            if [[ -f .task-meta-cache-exact-match ]]; then
+              echo "skipping re-upload because an exact match was returned from the cache"
+              exit 0
+            fi
+
+            request_key=$(cat ".task-meta-cache-key")
+            start_ts=$(date +%s)
+            cache_file=$(mktemp)
+
+            echo "packing cache..."
+            tar czP -f "${cache_file}" $(cat .task-meta-cache-paths)
+            size=$(du -h "${cache_file}" | awk '{ print $1 }')
+
+            echo "uploading cache (${size})..."
+            if curl -fsSL -H "authorization: Bearer ${CI_CACHE_TOKEN}" -X PUT "https://ci-cache.markormesher.co.uk/cache/${request_key}" --data-binary "@${cache_file}"; then
+              echo "uploaded cache"
+            else
+              echo "error saving cache"
+            fi
+
+            rm -f "${cache_file}"
+            end_ts=$(date +%s)
+            echo "saving cache took $(( $end_ts - $start_ts ))s"
+          fi
   deps:
     cmds:
-      - task: deps-go-automergeprs
-      - task: deps-go-generatetasksandci
-      - task: deps-go-updateimagelabels
-  deps-go:
+      - task: deps-automergeprs-go
+      - task: deps-generatetasksandci-go
+      - task: deps-updateimagelabels-go
+  deps-automergeprs:
     cmds:
-      - task: deps-go-automergeprs
-      - task: deps-go-generatetasksandci
-      - task: deps-go-updateimagelabels
-  deps-go-automergeprs:
+      - task: deps-automergeprs-go
+  deps-automergeprs-go:
     dir: '{{.ROOT_DIR}}/auto-merge-prs'
     cmds:
-      - cmd: go mod tidy && go mod download --json
+      - cmd: go mod download
       - cmd: (go tool || true) | (grep '\.' || true) | while read t; do go build -o /dev/null $t; done
-  deps-go-generatetasksandci:
+  deps-generatetasksandci:
+    cmds:
+      - task: deps-generatetasksandci-go
+  deps-generatetasksandci-go:
     dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
     cmds:
-      - cmd: go mod tidy && go mod download --json
+      - cmd: go mod download
       - cmd: (go tool || true) | (grep '\.' || true) | while read t; do go build -o /dev/null $t; done
-  deps-go-updateimagelabels:
+  deps-updateimagelabels:
+    cmds:
+      - task: deps-updateimagelabels-go
+  deps-updateimagelabels-go:
     dir: '{{.ROOT_DIR}}/update-image-labels'
     cmds:
-      - cmd: go mod tidy && go mod download --json
+      - cmd: go mod download
       - cmd: (go tool || true) | (grep '\.' || true) | while read t; do go build -o /dev/null $t; done
   imgbuild:
     cmds:
@@ -839,15 +1114,13 @@ tasks:
           cat .task-meta-imgrefs | grep "." || echo "None"
   lint:
     cmds:
-      - task: lint-go-automergeprs
-      - task: lint-go-generatetasksandci
-      - task: lint-go-updateimagelabels
-  lint-go:
+      - task: lint-automergeprs-go
+      - task: lint-generatetasksandci-go
+      - task: lint-updateimagelabels-go
+  lint-automergeprs:
     cmds:
-      - task: lint-go-automergeprs
-      - task: lint-go-generatetasksandci
-      - task: lint-go-updateimagelabels
-  lint-go-automergeprs:
+      - task: lint-automergeprs-go
+  lint-automergeprs-go:
     dir: '{{.ROOT_DIR}}/auto-merge-prs'
     cmds:
       - cmd: |-
@@ -882,7 +1155,10 @@ tasks:
           fi
 
           exit $exit_code
-  lint-go-generatetasksandci:
+  lint-generatetasksandci:
+    cmds:
+      - task: lint-generatetasksandci-go
+  lint-generatetasksandci-go:
     dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
     cmds:
       - cmd: |-
@@ -917,7 +1193,10 @@ tasks:
           fi
 
           exit $exit_code
-  lint-go-updateimagelabels:
+  lint-updateimagelabels:
+    cmds:
+      - task: lint-updateimagelabels-go
+  lint-updateimagelabels-go:
     dir: '{{.ROOT_DIR}}/update-image-labels'
     cmds:
       - cmd: |-
@@ -954,33 +1233,37 @@ tasks:
           exit $exit_code
   lintfix:
     cmds:
-      - task: lintfix-go-automergeprs
-      - task: lintfix-go-generatetasksandci
-      - task: lintfix-go-updateimagelabels
-  lintfix-go:
+      - task: lintfix-automergeprs-go
+      - task: lintfix-generatetasksandci-go
+      - task: lintfix-updateimagelabels-go
+  lintfix-automergeprs:
     cmds:
-      - task: lintfix-go-automergeprs
-      - task: lintfix-go-generatetasksandci
-      - task: lintfix-go-updateimagelabels
-  lintfix-go-automergeprs:
+      - task: lintfix-automergeprs-go
+  lintfix-automergeprs-go:
     dir: '{{.ROOT_DIR}}/auto-merge-prs'
     cmds:
       - cmd: gofmt -s -w .
-  lintfix-go-generatetasksandci:
+  lintfix-generatetasksandci:
+    cmds:
+      - task: lintfix-generatetasksandci-go
+  lintfix-generatetasksandci-go:
     dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
     cmds:
       - cmd: gofmt -s -w .
-  lintfix-go-updateimagelabels:
+  lintfix-updateimagelabels:
+    cmds:
+      - task: lintfix-updateimagelabels-go
+  lintfix-updateimagelabels-go:
     dir: '{{.ROOT_DIR}}/update-image-labels'
     cmds:
       - cmd: gofmt -s -w .
   test:
     cmds:
-      - task: test-go-updateimagelabels
-  test-go:
+      - task: test-updateimagelabels-go
+  test-updateimagelabels:
     cmds:
-      - task: test-go-updateimagelabels
-  test-go-updateimagelabels:
+      - task: test-updateimagelabels-go
+  test-updateimagelabels-go:
     dir: '{{.ROOT_DIR}}/update-image-labels'
     cmds:
       - cmd: go test ./...
