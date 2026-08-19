@@ -20,12 +20,13 @@ type IncludeTarget struct {
 }
 
 type Task struct {
-	Directory    string    `yaml:"dir,omitempty"`
-	Dependencies []string  `yaml:"deps,omitempty"`
-	Sources      []string  `yaml:"sources,omitempty"`
-	Generates    []string  `yaml:"generates,omitempty"`
-	Internal     bool      `yaml:"internal,omitempty"`
-	Commands     []Command `yaml:"cmds"`
+	Directory    string            `yaml:"dir,omitempty"`
+	Environment  map[string]string `yaml:"env,omitempty"`
+	Dependencies []string          `yaml:"deps,omitempty"`
+	Sources      []string          `yaml:"sources,omitempty"`
+	Generates    []string          `yaml:"generates,omitempty"`
+	Internal     bool              `yaml:"internal,omitempty"`
+	Commands     []Command         `yaml:"cmds"`
 }
 
 type Command struct {
