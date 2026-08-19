@@ -153,7 +153,7 @@ func (p *JSProject) addCacheLoadTask(taskFile *task.TaskFile) error {
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Dependencies: []string{
-			fmt.Sprintf("cachekey-js-%s", util.PathToSafeName(p.RelativePath)),
+			fmt.Sprintf("cachekey-%s-js", util.PathToSafeName(p.RelativePath)),
 		},
 		Commands: []task.Command{
 			{Command: cacheLoadCommand()},
@@ -181,7 +181,7 @@ func (p *JSProject) addCacheSaveTask(taskFile *task.TaskFile) error {
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Dependencies: []string{
-			fmt.Sprintf("cachekey-js-%s", util.PathToSafeName(p.RelativePath)),
+			fmt.Sprintf("cachekey-%s-js", util.PathToSafeName(p.RelativePath)),
 		},
 		Commands: []task.Command{
 			{Command: cachePathCmd + ` > .task-meta-cache-paths`},

@@ -88,7 +88,7 @@ tasks:
   cacheload-automergeprs-go:
     dir: '{{.ROOT_DIR}}/auto-merge-prs'
     deps:
-      - cachekey-go-automergeprs
+      - cachekey-automergeprs-go
     cmds:
       - cmd: |-
           if [[ -n ${CI_CACHE_TOKEN+x} ]] && [[ -f ".task-meta-cache-key" ]]; then
@@ -125,7 +125,7 @@ tasks:
   cacheload-generatetasksandci-go:
     dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
     deps:
-      - cachekey-go-generatetasksandci
+      - cachekey-generatetasksandci-go
     cmds:
       - cmd: |-
           if [[ -n ${CI_CACHE_TOKEN+x} ]] && [[ -f ".task-meta-cache-key" ]]; then
@@ -162,7 +162,7 @@ tasks:
   cacheload-updateimagelabels-go:
     dir: '{{.ROOT_DIR}}/update-image-labels'
     deps:
-      - cachekey-go-updateimagelabels
+      - cachekey-updateimagelabels-go
     cmds:
       - cmd: |-
           if [[ -n ${CI_CACHE_TOKEN+x} ]] && [[ -f ".task-meta-cache-key" ]]; then
@@ -204,7 +204,7 @@ tasks:
   cachesave-automergeprs-go:
     dir: '{{.ROOT_DIR}}/auto-merge-prs'
     deps:
-      - cachekey-go-automergeprs
+      - cachekey-automergeprs-go
     cmds:
       - cmd: echo "$(go env GOMODCACHE) $(go env GOCACHE)" > .task-meta-cache-paths
       - cmd: |-
@@ -239,7 +239,7 @@ tasks:
   cachesave-generatetasksandci-go:
     dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
     deps:
-      - cachekey-go-generatetasksandci
+      - cachekey-generatetasksandci-go
     cmds:
       - cmd: echo "$(go env GOMODCACHE) $(go env GOCACHE)" > .task-meta-cache-paths
       - cmd: |-
@@ -274,7 +274,7 @@ tasks:
   cachesave-updateimagelabels-go:
     dir: '{{.ROOT_DIR}}/update-image-labels'
     deps:
-      - cachekey-go-updateimagelabels
+      - cachekey-updateimagelabels-go
     cmds:
       - cmd: echo "$(go env GOMODCACHE) $(go env GOCACHE)" > .task-meta-cache-paths
       - cmd: |-

@@ -110,7 +110,7 @@ func (p *GoProject) addCacheLoadTask(taskFile *task.TaskFile) error {
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Dependencies: []string{
-			fmt.Sprintf("cachekey-go-%s", util.PathToSafeName(p.RelativePath)),
+			fmt.Sprintf("cachekey-%s-go", util.PathToSafeName(p.RelativePath)),
 		},
 		Commands: []task.Command{
 			{Command: cacheLoadCommand()},
@@ -125,7 +125,7 @@ func (p *GoProject) addCacheSaveTask(taskFile *task.TaskFile) error {
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Dependencies: []string{
-			fmt.Sprintf("cachekey-go-%s", util.PathToSafeName(p.RelativePath)),
+			fmt.Sprintf("cachekey-%s-go", util.PathToSafeName(p.RelativePath)),
 		},
 		Commands: []task.Command{
 			{Command: `echo "$(go env GOMODCACHE) $(go env GOCACHE)" > .task-meta-cache-paths`},
