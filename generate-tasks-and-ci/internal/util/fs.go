@@ -23,6 +23,11 @@ func Find(projectPath string, targets int, patterns []*regexp.Regexp, excludePat
 		relativePath := strings.TrimPrefix(path, projectPath)
 		match := false
 
+		// skip hidden directories
+		if strings.HasPrefix(path, ".") {
+			return nil
+		}
+
 		for i := range patterns {
 			if patterns[i].MatchString(relativePath) {
 				match = true

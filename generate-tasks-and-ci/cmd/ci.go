@@ -143,7 +143,7 @@ echo "All jobs passed"
 
 	// language check tasks
 	langs := []string{"buf", "go", "js", "sqlc"}
-	langTasks := []string{"deps", "lint", "test"}
+	langTasks := []string{"cacheload", "deps", "lint", "test", "cachesave"}
 	for _, lang := range langs {
 		// TODO: consider RUNTIME_ENV and RUNTIME_PACKAGES
 
@@ -175,9 +175,16 @@ echo "All jobs passed"
 			taskName := fmt.Sprintf("%s-%s", langTask, lang)
 			if slices.Contains(taskNames, taskName) {
 				langHasTasks = true
-				job.Steps = append(job.Steps, ci.ActionsJobStepConfig{
-					Run: fmt.Sprintf("./task %s", taskName),
-				})
+				step := ci.ActionsJobStepConfig{
+					Environment: map[string]string{},
+					Run:         fmt.Sprintf("./task -s %s", taskName),
+				}
+
+				if strings.HasPrefix(taskName, "cache") {
+					step.Environment["CI_CACHE_TOKEN"] = "${{ secrets.CI_CACHE_TOKEN }}"
+				}
+
+				job.Steps = append(job.Steps, step)
 			}
 		}
 
@@ -213,7 +220,7 @@ echo "All jobs passed"
 
 		for _, t := range []string{"imgrefs", "imgbuild", "imgpush"} {
 			job.Steps = append(job.Steps, ci.ActionsJobStepConfig{
-				Run: fmt.Sprintf("./task %s", t),
+				Run: fmt.Sprintf("./task -s %s", t),
 			})
 		}
 
