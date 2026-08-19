@@ -73,7 +73,7 @@ func (p *GoProject) AddTasks(taskFile *task.TaskFile) error {
 }
 
 func (p *GoProject) addCacheKeyTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("cachekey-go-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("cachekey-%s-go", util.PathToSafeName(p.RelativePath))
 
 	nonAlphanumeric := regexp.MustCompile(`[^a-zA-Z0-9 ]+`)
 	projectName := nonAlphanumeric.ReplaceAllString(path.Base(p.ParentPath), "")
@@ -106,7 +106,7 @@ fi
 }
 
 func (p *GoProject) addCacheLoadTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("cacheload-go-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("cacheload-%s-go", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Dependencies: []string{
@@ -121,7 +121,7 @@ func (p *GoProject) addCacheLoadTask(taskFile *task.TaskFile) error {
 }
 
 func (p *GoProject) addCacheSaveTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("cachesave-go-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("cachesave-%s-go", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Dependencies: []string{
@@ -137,7 +137,7 @@ func (p *GoProject) addCacheSaveTask(taskFile *task.TaskFile) error {
 }
 
 func (p *GoProject) addDepsTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("deps-go-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("deps-%s-go", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
@@ -150,7 +150,7 @@ func (p *GoProject) addDepsTask(taskFile *task.TaskFile) error {
 }
 
 func (p *GoProject) addLintTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("lint-go-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("lint-%s-go", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
@@ -194,7 +194,7 @@ exit $exit_code
 }
 
 func (p *GoProject) addLintFixTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("lintfix-go-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("lintfix-%s-go", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
@@ -222,7 +222,7 @@ func (p *GoProject) addTestTask(taskFile *task.TaskFile) error {
 		return nil
 	}
 
-	name := fmt.Sprintf("test-go-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("test-%s-go", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{

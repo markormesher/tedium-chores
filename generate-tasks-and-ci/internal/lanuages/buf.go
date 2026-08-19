@@ -67,7 +67,7 @@ func (p *BufProject) GetRelativePath() string {
 }
 
 func (p *BufProject) addLintTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("lint-buf-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("lint-%s-buf", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
@@ -80,7 +80,7 @@ func (p *BufProject) addLintTask(taskFile *task.TaskFile) error {
 }
 
 func (p *BufProject) addLintFixTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("lintfix-buf-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("lintfix-%s-buf", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
@@ -92,7 +92,7 @@ func (p *BufProject) addLintFixTask(taskFile *task.TaskFile) error {
 }
 
 func (p *BufProject) addGenTask(taskFile *task.TaskFile) error {
-	name := fmt.Sprintf("gen-buf-%s", util.PathToSafeName(p.RelativePath))
+	name := fmt.Sprintf("gen-%s-buf", util.PathToSafeName(p.RelativePath))
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Commands: []task.Command{
