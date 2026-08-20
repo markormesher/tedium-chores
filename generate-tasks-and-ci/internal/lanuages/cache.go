@@ -2,7 +2,7 @@ package lanuages
 
 func cacheLoadCommand() string {
 	return `
-if [[ "${CI_CACHE_TOKEN:-x}" != x ]] && [[ -f ".task-meta-cache-key" ]]; then
+if [[ -n "${CI_CACHE_TOKEN:-}" ]] && [[ -f ".task-meta-cache-key" ]]; then
   request_key=$(cat ".task-meta-cache-key" | tr -d '\r\n')
   start_ts=$(date +%s)
   header_file=$(mktemp)
