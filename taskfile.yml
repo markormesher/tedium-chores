@@ -21,7 +21,7 @@ tasks:
     cmds:
       - cmd: |-
           if [ ${CI:+1} ]; then
-            PROJECT=""
+            PROJECT="repo"
 
             DEPS_SHA=$(cat go.mod | sha256sum | awk '{ print $1 }')
 
@@ -43,7 +43,7 @@ tasks:
     cmds:
       - cmd: |-
           if [ ${CI:+1} ]; then
-            PROJECT=""
+            PROJECT="repo"
 
             DEPS_SHA=$(cat go.mod | sha256sum | awk '{ print $1 }')
 
@@ -65,7 +65,7 @@ tasks:
     cmds:
       - cmd: |-
           if [ ${CI:+1} ]; then
-            PROJECT=""
+            PROJECT="repo"
 
             DEPS_SHA=$(cat go.mod | sha256sum | awk '{ print $1 }')
 
