@@ -35,7 +35,7 @@ fi
 
 func cacheSaveCommand() string {
 	return `
-if [[ "${CI_CACHE_TOKEN:-x}" != x ]] && [[ -f ".task-meta-cache-key" ]]; then
+if [[ -n "${CI_CACHE_TOKEN:-}" ]] && [[ -f ".task-meta-cache-key" ]]; then
   if [[ -f .task-meta-cache-exact-match ]]; then
     echo "skipping re-upload because an exact match was returned from the cache"
     exit 0
