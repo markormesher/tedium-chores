@@ -20,10 +20,10 @@ tasks:
       - .task-meta-cache-key
     cmds:
       - cmd: |-
-          if [ ${CI:+1} ]; then
-            if [[ ${FORGEJO_REPOSITORY:+1} ]]; then
+          if [[ -n ${CI:-} ]]; then
+            if [[ -n ${FORGEJO_REPOSITORY:-} ]]; then
               PROJECT=$(echo "$FORGEJO_REPOSITORY" | tr -dc '[[a-z0-9]]')
-            elif [[ ${GITHUB_REPOSITORY:+1} ]]; then
+            elif [[ -n ${GITHUB_REPOSITORY:-} ]]; then
               PROJECT=$(echo "$GITHUB_REPOSITORY" | tr -dc '[[a-z0-9]]')
             else
               PROJECT="noproject"
@@ -48,10 +48,10 @@ tasks:
       - .task-meta-cache-key
     cmds:
       - cmd: |-
-          if [ ${CI:+1} ]; then
-            if [[ ${FORGEJO_REPOSITORY:+1} ]]; then
+          if [[ -n ${CI:-} ]]; then
+            if [[ -n ${FORGEJO_REPOSITORY:-} ]]; then
               PROJECT=$(echo "$FORGEJO_REPOSITORY" | tr -dc '[[a-z0-9]]')
-            elif [[ ${GITHUB_REPOSITORY:+1} ]]; then
+            elif [[ -n ${GITHUB_REPOSITORY:-} ]]; then
               PROJECT=$(echo "$GITHUB_REPOSITORY" | tr -dc '[[a-z0-9]]')
             else
               PROJECT="noproject"
@@ -76,10 +76,10 @@ tasks:
       - .task-meta-cache-key
     cmds:
       - cmd: |-
-          if [ ${CI:+1} ]; then
-            if [[ ${FORGEJO_REPOSITORY:+1} ]]; then
+          if [[ -n ${CI:-} ]]; then
+            if [[ -n ${FORGEJO_REPOSITORY:-} ]]; then
               PROJECT=$(echo "$FORGEJO_REPOSITORY" | tr -dc '[[a-z0-9]]')
-            elif [[ ${GITHUB_REPOSITORY:+1} ]]; then
+            elif [[ -n ${GITHUB_REPOSITORY:-} ]]; then
               PROJECT=$(echo "$GITHUB_REPOSITORY" | tr -dc '[[a-z0-9]]')
             else
               PROJECT="noproject"
@@ -109,7 +109,7 @@ tasks:
       - cachekey-automergeprs-go
     cmds:
       - cmd: |-
-          if [[ -n ${CI_CACHE_TOKEN+x} ]] && [[ -f ".task-meta-cache-key" ]]; then
+          if [[ -n "${CI_CACHE_TOKEN:-}" ]] && [[ -f ".task-meta-cache-key" ]]; then
             request_key=$(cat ".task-meta-cache-key" | tr -d '\r\n')
             start_ts=$(date +%s)
             header_file=$(mktemp)
@@ -146,7 +146,7 @@ tasks:
       - cachekey-generatetasksandci-go
     cmds:
       - cmd: |-
-          if [[ -n ${CI_CACHE_TOKEN+x} ]] && [[ -f ".task-meta-cache-key" ]]; then
+          if [[ -n "${CI_CACHE_TOKEN:-}" ]] && [[ -f ".task-meta-cache-key" ]]; then
             request_key=$(cat ".task-meta-cache-key" | tr -d '\r\n')
             start_ts=$(date +%s)
             header_file=$(mktemp)
@@ -183,7 +183,7 @@ tasks:
       - cachekey-updateimagelabels-go
     cmds:
       - cmd: |-
-          if [[ -n ${CI_CACHE_TOKEN+x} ]] && [[ -f ".task-meta-cache-key" ]]; then
+          if [[ -n "${CI_CACHE_TOKEN:-}" ]] && [[ -f ".task-meta-cache-key" ]]; then
             request_key=$(cat ".task-meta-cache-key" | tr -d '\r\n')
             start_ts=$(date +%s)
             header_file=$(mktemp)
@@ -226,7 +226,7 @@ tasks:
     cmds:
       - cmd: echo "$(go env GOMODCACHE) $(go env GOCACHE)" > .task-meta-cache-paths
       - cmd: |-
-          if [[ -n ${CI_CACHE_TOKEN+x} ]] && [[ -f .task-meta-cache-key ]] && [[ -f .task-meta-cache-paths ]]; then
+          if [[ -n "${CI_CACHE_TOKEN:-}" ]] && [[ -f ".task-meta-cache-key" ]]; then
             if [[ -f .task-meta-cache-exact-match ]]; then
               echo "skipping re-upload because an exact match was returned from the cache"
               exit 0
@@ -261,7 +261,7 @@ tasks:
     cmds:
       - cmd: echo "$(go env GOMODCACHE) $(go env GOCACHE)" > .task-meta-cache-paths
       - cmd: |-
-          if [[ -n ${CI_CACHE_TOKEN+x} ]] && [[ -f .task-meta-cache-key ]] && [[ -f .task-meta-cache-paths ]]; then
+          if [[ -n "${CI_CACHE_TOKEN:-}" ]] && [[ -f ".task-meta-cache-key" ]]; then
             if [[ -f .task-meta-cache-exact-match ]]; then
               echo "skipping re-upload because an exact match was returned from the cache"
               exit 0
@@ -296,7 +296,7 @@ tasks:
     cmds:
       - cmd: echo "$(go env GOMODCACHE) $(go env GOCACHE)" > .task-meta-cache-paths
       - cmd: |-
-          if [[ -n ${CI_CACHE_TOKEN+x} ]] && [[ -f .task-meta-cache-key ]] && [[ -f .task-meta-cache-paths ]]; then
+          if [[ -n "${CI_CACHE_TOKEN:-}" ]] && [[ -f ".task-meta-cache-key" ]]; then
             if [[ -f .task-meta-cache-exact-match ]]; then
               echo "skipping re-upload because an exact match was returned from the cache"
               exit 0

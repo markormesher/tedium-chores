@@ -78,10 +78,10 @@ func (p *GoProject) addCacheKeyTask(taskFile *task.TaskFile) error {
 		Commands: []task.Command{
 			{
 				Command: `
-if [ ${CI:+1} ]; then
-  if [[ ${FORGEJO_REPOSITORY:+1} ]]; then
+if [[ -n ${CI:-} ]]; then
+  if [[ -n ${FORGEJO_REPOSITORY:-} ]]; then
     PROJECT=$(echo "$FORGEJO_REPOSITORY" | tr -dc '[[a-z0-9]]')
-  elif [[ ${GITHUB_REPOSITORY:+1} ]]; then
+  elif [[ -n ${GITHUB_REPOSITORY:-} ]]; then
     PROJECT=$(echo "$GITHUB_REPOSITORY" | tr -dc '[[a-z0-9]]')
   else
     PROJECT="noproject"
