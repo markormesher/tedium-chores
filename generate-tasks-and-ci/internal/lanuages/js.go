@@ -14,7 +14,6 @@ import (
 )
 
 type JSProject struct {
-	ParentPath        string
 	ProjectPath       string
 	RelativePath      string
 	PackageManagerCmd string
@@ -73,7 +72,6 @@ func FindJSProjects(projectPath string) ([]Project, error) {
 		}
 
 		output = append(output, &JSProject{
-			ParentPath:        projectPath,
 			ProjectPath:       path.Join(projectPath, path.Dir(p)),
 			RelativePath:      path.Dir(p),
 			PackageManagerCmd: packageManagerCmd,
@@ -115,10 +113,6 @@ func (p *JSProject) AddTasks(taskFile *task.TaskFile) error {
 
 func (p *JSProject) addCacheKeyTask(taskFile *task.TaskFile) error {
 	name := fmt.Sprintf("cachekey-%s-js", util.PathToSafeName(p.RelativePath))
-
-	nonAlphanumeric := regexp.MustCompile(`[^a-zA-Z0-9 ]+`)
-	projectName := nonAlphanumeric.ReplaceAllString(path.Base(p.ParentPath), "")
-
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Generates: []string{".task-meta-cache-key"},
@@ -126,7 +120,13 @@ func (p *JSProject) addCacheKeyTask(taskFile *task.TaskFile) error {
 			{
 				Command: `
 if [ ${CI:+1} ]; then
-  PROJECT="` + projectName + `"
+  if [[ ${FORGEJO_REPOSITORY:+1} ]]; then
+    PROJECT=$(echo "$FORGEJO_REPOSITORY" | tr -dc '[[a-z0-9]]')
+  elif [[ ${GITHUB_REPOSITORY:+1} ]]; then
+    PROJECT=$(echo "$GITHUB_REPOSITORY" | tr -dc '[[a-z0-9]]')
+  else
+    PROJECT="noproject"
+  fi
 
   DEPS_SHA=$(cat package.json | sha256sum | awk '{ print $1 }')
 

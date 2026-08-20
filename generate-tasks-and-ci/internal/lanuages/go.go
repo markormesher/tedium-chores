@@ -10,7 +10,6 @@ import (
 )
 
 type GoProject struct {
-	ParentPath   string
 	ProjectPath  string
 	RelativePath string
 }
@@ -34,7 +33,6 @@ func FindGoProjects(projectPath string) ([]Project, error) {
 
 	for _, p := range goModPaths {
 		output = append(output, &GoProject{
-			ParentPath:   projectPath,
 			ProjectPath:  path.Join(projectPath, path.Dir(p)),
 			RelativePath: path.Dir(p),
 		})
@@ -74,10 +72,6 @@ func (p *GoProject) AddTasks(taskFile *task.TaskFile) error {
 
 func (p *GoProject) addCacheKeyTask(taskFile *task.TaskFile) error {
 	name := fmt.Sprintf("cachekey-%s-go", util.PathToSafeName(p.RelativePath))
-
-	nonAlphanumeric := regexp.MustCompile(`[^a-zA-Z0-9 ]+`)
-	projectName := nonAlphanumeric.ReplaceAllString(path.Base(p.ParentPath), "")
-
 	taskFile.Tasks[name] = &task.Task{
 		Directory: path.Join("{{.ROOT_DIR}}", p.RelativePath),
 		Generates: []string{".task-meta-cache-key"},
@@ -85,7 +79,13 @@ func (p *GoProject) addCacheKeyTask(taskFile *task.TaskFile) error {
 			{
 				Command: `
 if [ ${CI:+1} ]; then
-  PROJECT="` + projectName + `"
+  if [[ ${FORGEJO_REPOSITORY:+1} ]]; then
+    PROJECT=$(echo "$FORGEJO_REPOSITORY" | tr -dc '[[a-z0-9]]')
+  elif [[ ${GITHUB_REPOSITORY:+1} ]]; then
+    PROJECT=$(echo "$GITHUB_REPOSITORY" | tr -dc '[[a-z0-9]]')
+  else
+    PROJECT="noproject"
+  fi
 
   DEPS_SHA=$(cat go.mod | sha256sum | awk '{ print $1 }')
 
