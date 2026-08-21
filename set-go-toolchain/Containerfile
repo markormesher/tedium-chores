@@ -1,0 +1,16 @@
+FROM docker.io/debian:13.6-slim@sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258
+WORKDIR /app
+
+COPY ./set-go-toolchain.sh /usr/local/bin/.
+RUN chmod +x /usr/local/bin/set-go-toolchain.sh
+
+CMD ["/usr/local/bin/set-go-toolchain.sh"]
+
+LABEL image.name=markormesher/tedium-chore-set-go-toolchain
+LABEL image.registry=ghcr.io
+LABEL org.opencontainers.image.description=""
+LABEL org.opencontainers.image.documentation=""
+LABEL org.opencontainers.image.title="tedium-chores"
+LABEL org.opencontainers.image.url=""
+LABEL org.opencontainers.image.vendor=""
+LABEL org.opencontainers.image.version=""
