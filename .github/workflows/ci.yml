@@ -58,6 +58,7 @@ jobs:
       - img-generatetasksandci
       - img-managegotools
       - img-rewritedebianversions
+      - img-setgotoolchain
       - img-updateimagelabels
     container:
       image: docker.io/busybox:1.38.0@sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616
@@ -123,6 +124,16 @@ jobs:
       - run: ./task -s imgrefs-rewritedebianversions
       - run: ./task -s imgbuild-rewritedebianversions
       - run: ./task -s imgpush-rewritedebianversions
+  img-setgotoolchain:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: markormesher/ci-resources/setup@c733feb84c0204cdc0bd46f6f8ca557209bb5c33 # v0.8.0
+      - run: buildah login ghcr.io -u "${{ github.actor }}" -p "${{ github.token }}"
+      - run: ./task -s imgrefs-setgotoolchain
+      - run: ./task -s imgbuild-setgotoolchain
+      - run: ./task -s imgpush-setgotoolchain
   img-updateimagelabels:
     runs-on: ubuntu-latest
     needs:

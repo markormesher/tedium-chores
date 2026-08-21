@@ -1,0 +1,6 @@
+name: "Set Go toolchain"
+conventionalType: "build"
+description: "This chore sets the Go `toolchain` command if it is not present."
+steps:
+  - image: "ghcr.io/markormesher/tedium-chore-set-go-toolchain:latest"
+    command: "/usr/local/bin/set-go-toolchain.sh"
