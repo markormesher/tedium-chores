@@ -57,7 +57,6 @@ jobs:
       - img-automergeprs
       - img-generatetasksandci
       - img-managegotools
-      - img-rewritedebianversions
       - img-setgotoolchain
       - img-updateimagelabels
     container:
@@ -114,16 +113,6 @@ jobs:
       - run: ./task -s imgrefs-managegotools
       - run: ./task -s imgbuild-managegotools
       - run: ./task -s imgpush-managegotools
-  img-rewritedebianversions:
-    runs-on: ubuntu-latest
-    permissions:
-      packages: write
-    steps:
-      - uses: markormesher/ci-resources/setup@c733feb84c0204cdc0bd46f6f8ca557209bb5c33 # v0.8.0
-      - run: buildah login ghcr.io -u "${{ github.actor }}" -p "${{ github.token }}"
-      - run: ./task -s imgrefs-rewritedebianversions
-      - run: ./task -s imgbuild-rewritedebianversions
-      - run: ./task -s imgpush-rewritedebianversions
   img-setgotoolchain:
     runs-on: ubuntu-latest
     permissions:
