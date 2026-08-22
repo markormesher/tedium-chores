@@ -2,7 +2,7 @@ module github.com/markormesher/tedium-chores/auto-merge-prs
 
 go 1.26.0
 
-toolchain go1.26.6
+toolchain go1.27.0
 
 require (
 	github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c // indirect
