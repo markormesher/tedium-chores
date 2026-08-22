@@ -2,7 +2,7 @@ module github.com/markormesher/tedium-chores/update-image-labels
 
 go 1.26.0
 
-toolchain go1.26.6
+toolchain go1.27.0
 
 require github.com/sergi/go-diff v1.4.0
 
