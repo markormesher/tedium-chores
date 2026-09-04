@@ -333,7 +333,6 @@ tasks:
     dir: '{{.ROOT_DIR}}/auto-merge-prs'
     cmds:
       - cmd: go mod download
-      - cmd: (go tool || true) | (grep '\.' || true) | while read t; do go build -o /dev/null $t; done
   deps-generatetasksandci:
     cmds:
       - task: deps-generatetasksandci-go
@@ -341,7 +340,6 @@ tasks:
     dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
     cmds:
       - cmd: go mod download
-      - cmd: (go tool || true) | (grep '\.' || true) | while read t; do go build -o /dev/null $t; done
   deps-updateimagelabels:
     cmds:
       - task: deps-updateimagelabels-go
@@ -349,7 +347,6 @@ tasks:
     dir: '{{.ROOT_DIR}}/update-image-labels'
     cmds:
       - cmd: go mod download
-      - cmd: (go tool || true) | (grep '\.' || true) | while read t; do go build -o /dev/null $t; done
   imgbuild:
     cmds:
       - task: imgbuild-applybranchprotection
