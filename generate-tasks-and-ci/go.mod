@@ -2,7 +2,7 @@ module github.com/markormesher/tedium-chores/generate-tasks-and-ci
 
 go 1.26.0
 
-toolchain go1.27.2
+toolchain go1.27.3
 
 require gopkg.in/yaml.v3 v3.0.1
 
