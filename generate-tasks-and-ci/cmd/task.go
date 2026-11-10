@@ -13,7 +13,7 @@ import (
 
 	"github.com/markormesher/tedium-chores/generate-tasks-and-ci/internal/lanuages"
 	"github.com/markormesher/tedium-chores/generate-tasks-and-ci/internal/task"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func updateTaskfile(projectPath string) {

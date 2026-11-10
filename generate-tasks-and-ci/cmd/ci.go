@@ -15,7 +15,7 @@ import (
 	"github.com/markormesher/tedium-chores/generate-tasks-and-ci/internal/ci"
 	"github.com/markormesher/tedium-chores/generate-tasks-and-ci/internal/task"
 	"github.com/markormesher/tedium-chores/generate-tasks-and-ci/internal/util"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // ResourceSet is a utility type to store the container image references used for various steps.
