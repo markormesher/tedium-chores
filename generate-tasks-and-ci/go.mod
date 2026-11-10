@@ -4,7 +4,7 @@ go 1.26.0
 
 toolchain go1.27.3
 
-require gopkg.in/yaml.v3 v3.0.1
+require go.yaml.in/yaml/v4 v4.0.0
 
 require (
 	github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c // indirect
