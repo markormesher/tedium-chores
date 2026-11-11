@@ -13,6 +13,7 @@ import (
 
 	"github.com/markormesher/tedium-chores/generate-tasks-and-ci/internal/lanuages"
 	"github.com/markormesher/tedium-chores/generate-tasks-and-ci/internal/task"
+	"github.com/markormesher/tedium-chores/generate-tasks-and-ci/internal/util"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -119,11 +120,15 @@ func updateTaskfile(projectPath string) {
 	// write output
 
 	var outputBuffer bytes.Buffer
-	encoder := yaml.NewEncoder(&outputBuffer)
-	encoder.SetIndent(2)
-	err := encoder.Encode(taskFile)
+	dumper, err := yaml.NewDumper(&outputBuffer, util.YAMLOutputOptions...)
 	if err != nil {
-		slog.Error("Couldn't marshall output")
+		slog.Error("couldn't build output dumper")
+		os.Exit(1)
+	}
+
+	err = dumper.Dump(taskFile)
+	if err != nil {
+		slog.Error("couldn't dump output")
 		os.Exit(1)
 	}
 

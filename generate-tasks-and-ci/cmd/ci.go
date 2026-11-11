@@ -69,7 +69,7 @@ func updateCIConfig(projectPath string) {
 		os.Exit(1)
 	}
 
-	privateGitDomain := os.Getenv("PRIVATE_GIT_DOMAIN")
+	privateGitDomain := strings.TrimSpace(os.Getenv("PRIVATE_GIT_DOMAIN"))
 
 	// define the output path based on the repo type
 	outputPath := ""
@@ -129,14 +129,14 @@ func updateCIConfig(projectPath string) {
 		},
 		Steps: []ci.ActionsJobStepConfig{
 			{
-				Run: `
+				Run: strings.TrimSpace(`
 results=$(echo '${{ toJson(needs) }}' | (grep '"result"' || echo))
 if echo "$results" | grep -q "failure\|cancelled\|skipped"; then
   echo "One or more jobs failed, were cancelled, or were skipped" >&2
   exit 1
 fi
 echo "All jobs passed"
-`,
+`),
 			},
 		},
 	}
@@ -275,11 +275,15 @@ echo "All jobs passed"
 
 	// write out the actual config
 	var outputBuffer bytes.Buffer
-	encoder := yaml.NewEncoder(&outputBuffer)
-	encoder.SetIndent(2)
-	err = encoder.Encode(newConfig)
+	dumper, err := yaml.NewDumper(&outputBuffer, util.YAMLOutputOptions...)
 	if err != nil {
-		slog.Error("couldn't encode output")
+		slog.Error("couldn't build output dumper")
+		os.Exit(1)
+	}
+
+	err = dumper.Dump(newConfig)
+	if err != nil {
+		slog.Error("couldn't dump output")
 		os.Exit(1)
 	}
 
