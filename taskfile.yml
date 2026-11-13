@@ -1,5 +1,6 @@
 # This file is maintained by Tedium - manual edits will be overwritten!
 
+---
 version: "3"
 includes:
   local:
@@ -15,7 +16,7 @@ tasks:
     cmds:
       - task: cachekey-automergeprs-go
   cachekey-automergeprs-go:
-    dir: '{{.ROOT_DIR}}/auto-merge-prs'
+    dir: "{{.ROOT_DIR}}/auto-merge-prs"
     generates:
       - .task-meta-cache-key
     cmds:
@@ -43,7 +44,7 @@ tasks:
     cmds:
       - task: cachekey-generatetasksandci-go
   cachekey-generatetasksandci-go:
-    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
+    dir: "{{.ROOT_DIR}}/generate-tasks-and-ci"
     generates:
       - .task-meta-cache-key
     cmds:
@@ -71,7 +72,7 @@ tasks:
     cmds:
       - task: cachekey-updateimagelabels-go
   cachekey-updateimagelabels-go:
-    dir: '{{.ROOT_DIR}}/update-image-labels'
+    dir: "{{.ROOT_DIR}}/update-image-labels"
     generates:
       - .task-meta-cache-key
     cmds:
@@ -104,7 +105,7 @@ tasks:
     cmds:
       - task: cacheload-automergeprs-go
   cacheload-automergeprs-go:
-    dir: '{{.ROOT_DIR}}/auto-merge-prs'
+    dir: "{{.ROOT_DIR}}/auto-merge-prs"
     deps:
       - cachekey-automergeprs-go
     cmds:
@@ -141,7 +142,7 @@ tasks:
     cmds:
       - task: cacheload-generatetasksandci-go
   cacheload-generatetasksandci-go:
-    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
+    dir: "{{.ROOT_DIR}}/generate-tasks-and-ci"
     deps:
       - cachekey-generatetasksandci-go
     cmds:
@@ -178,7 +179,7 @@ tasks:
     cmds:
       - task: cacheload-updateimagelabels-go
   cacheload-updateimagelabels-go:
-    dir: '{{.ROOT_DIR}}/update-image-labels'
+    dir: "{{.ROOT_DIR}}/update-image-labels"
     deps:
       - cachekey-updateimagelabels-go
     cmds:
@@ -220,7 +221,7 @@ tasks:
     cmds:
       - task: cachesave-automergeprs-go
   cachesave-automergeprs-go:
-    dir: '{{.ROOT_DIR}}/auto-merge-prs'
+    dir: "{{.ROOT_DIR}}/auto-merge-prs"
     deps:
       - cachekey-automergeprs-go
     cmds:
@@ -255,7 +256,7 @@ tasks:
     cmds:
       - task: cachesave-generatetasksandci-go
   cachesave-generatetasksandci-go:
-    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
+    dir: "{{.ROOT_DIR}}/generate-tasks-and-ci"
     deps:
       - cachekey-generatetasksandci-go
     cmds:
@@ -290,7 +291,7 @@ tasks:
     cmds:
       - task: cachesave-updateimagelabels-go
   cachesave-updateimagelabels-go:
-    dir: '{{.ROOT_DIR}}/update-image-labels'
+    dir: "{{.ROOT_DIR}}/update-image-labels"
     deps:
       - cachekey-updateimagelabels-go
     cmds:
@@ -330,21 +331,21 @@ tasks:
     cmds:
       - task: deps-automergeprs-go
   deps-automergeprs-go:
-    dir: '{{.ROOT_DIR}}/auto-merge-prs'
+    dir: "{{.ROOT_DIR}}/auto-merge-prs"
     cmds:
       - cmd: go mod download
   deps-generatetasksandci:
     cmds:
       - task: deps-generatetasksandci-go
   deps-generatetasksandci-go:
-    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
+    dir: "{{.ROOT_DIR}}/generate-tasks-and-ci"
     cmds:
       - cmd: go mod download
   deps-updateimagelabels:
     cmds:
       - task: deps-updateimagelabels-go
   deps-updateimagelabels-go:
-    dir: '{{.ROOT_DIR}}/update-image-labels'
+    dir: "{{.ROOT_DIR}}/update-image-labels"
     cmds:
       - cmd: go mod download
   imgbuild:
@@ -356,7 +357,7 @@ tasks:
       - task: imgbuild-setgotoolchain
       - task: imgbuild-updateimagelabels
   imgbuild-applybranchprotection:
-    dir: '{{.ROOT_DIR}}/apply-branch-protection'
+    dir: "{{.ROOT_DIR}}/apply-branch-protection"
     deps:
       - imgrefs-applybranchprotection
     cmds:
@@ -396,7 +397,7 @@ tasks:
             done
           fi
   imgbuild-automergeprs:
-    dir: '{{.ROOT_DIR}}/auto-merge-prs'
+    dir: "{{.ROOT_DIR}}/auto-merge-prs"
     deps:
       - imgrefs-automergeprs
     cmds:
@@ -436,7 +437,7 @@ tasks:
             done
           fi
   imgbuild-generatetasksandci:
-    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
+    dir: "{{.ROOT_DIR}}/generate-tasks-and-ci"
     deps:
       - imgrefs-generatetasksandci
     cmds:
@@ -476,7 +477,7 @@ tasks:
             done
           fi
   imgbuild-managegotools:
-    dir: '{{.ROOT_DIR}}/manage-go-tools'
+    dir: "{{.ROOT_DIR}}/manage-go-tools"
     deps:
       - imgrefs-managegotools
     cmds:
@@ -516,7 +517,7 @@ tasks:
             done
           fi
   imgbuild-setgotoolchain:
-    dir: '{{.ROOT_DIR}}/set-go-toolchain'
+    dir: "{{.ROOT_DIR}}/set-go-toolchain"
     deps:
       - imgrefs-setgotoolchain
     cmds:
@@ -556,7 +557,7 @@ tasks:
             done
           fi
   imgbuild-updateimagelabels:
-    dir: '{{.ROOT_DIR}}/update-image-labels'
+    dir: "{{.ROOT_DIR}}/update-image-labels"
     deps:
       - imgrefs-updateimagelabels
     cmds:
@@ -604,7 +605,7 @@ tasks:
       - task: imgpush-setgotoolchain
       - task: imgpush-updateimagelabels
   imgpush-applybranchprotection:
-    dir: '{{.ROOT_DIR}}/apply-branch-protection'
+    dir: "{{.ROOT_DIR}}/apply-branch-protection"
     deps:
       - imgrefs-applybranchprotection
     cmds:
@@ -632,7 +633,7 @@ tasks:
             exit 1
           fi
   imgpush-automergeprs:
-    dir: '{{.ROOT_DIR}}/auto-merge-prs'
+    dir: "{{.ROOT_DIR}}/auto-merge-prs"
     deps:
       - imgrefs-automergeprs
     cmds:
@@ -660,7 +661,7 @@ tasks:
             exit 1
           fi
   imgpush-generatetasksandci:
-    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
+    dir: "{{.ROOT_DIR}}/generate-tasks-and-ci"
     deps:
       - imgrefs-generatetasksandci
     cmds:
@@ -688,7 +689,7 @@ tasks:
             exit 1
           fi
   imgpush-managegotools:
-    dir: '{{.ROOT_DIR}}/manage-go-tools'
+    dir: "{{.ROOT_DIR}}/manage-go-tools"
     deps:
       - imgrefs-managegotools
     cmds:
@@ -716,7 +717,7 @@ tasks:
             exit 1
           fi
   imgpush-setgotoolchain:
-    dir: '{{.ROOT_DIR}}/set-go-toolchain'
+    dir: "{{.ROOT_DIR}}/set-go-toolchain"
     deps:
       - imgrefs-setgotoolchain
     cmds:
@@ -744,7 +745,7 @@ tasks:
             exit 1
           fi
   imgpush-updateimagelabels:
-    dir: '{{.ROOT_DIR}}/update-image-labels'
+    dir: "{{.ROOT_DIR}}/update-image-labels"
     deps:
       - imgrefs-updateimagelabels
     cmds:
@@ -780,7 +781,7 @@ tasks:
       - task: imgrefs-setgotoolchain
       - task: imgrefs-updateimagelabels
   imgrefs-applybranchprotection:
-    dir: '{{.ROOT_DIR}}/apply-branch-protection'
+    dir: "{{.ROOT_DIR}}/apply-branch-protection"
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -838,7 +839,7 @@ tasks:
           echo "Image refs:"
           cat .task-meta-imgrefs | grep "." || echo "None"
   imgrefs-automergeprs:
-    dir: '{{.ROOT_DIR}}/auto-merge-prs'
+    dir: "{{.ROOT_DIR}}/auto-merge-prs"
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -896,7 +897,7 @@ tasks:
           echo "Image refs:"
           cat .task-meta-imgrefs | grep "." || echo "None"
   imgrefs-generatetasksandci:
-    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
+    dir: "{{.ROOT_DIR}}/generate-tasks-and-ci"
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -954,7 +955,7 @@ tasks:
           echo "Image refs:"
           cat .task-meta-imgrefs | grep "." || echo "None"
   imgrefs-managegotools:
-    dir: '{{.ROOT_DIR}}/manage-go-tools'
+    dir: "{{.ROOT_DIR}}/manage-go-tools"
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -1012,7 +1013,7 @@ tasks:
           echo "Image refs:"
           cat .task-meta-imgrefs | grep "." || echo "None"
   imgrefs-setgotoolchain:
-    dir: '{{.ROOT_DIR}}/set-go-toolchain'
+    dir: "{{.ROOT_DIR}}/set-go-toolchain"
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -1070,7 +1071,7 @@ tasks:
           echo "Image refs:"
           cat .task-meta-imgrefs | grep "." || echo "None"
   imgrefs-updateimagelabels:
-    dir: '{{.ROOT_DIR}}/update-image-labels'
+    dir: "{{.ROOT_DIR}}/update-image-labels"
     cmds:
       - cmd: |-
           set -euo pipefail
@@ -1136,7 +1137,7 @@ tasks:
     cmds:
       - task: lint-automergeprs-go
   lint-automergeprs-go:
-    dir: '{{.ROOT_DIR}}/auto-merge-prs'
+    dir: "{{.ROOT_DIR}}/auto-merge-prs"
     cmds:
       - cmd: |-
           exit_code=0
@@ -1174,7 +1175,7 @@ tasks:
     cmds:
       - task: lint-generatetasksandci-go
   lint-generatetasksandci-go:
-    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
+    dir: "{{.ROOT_DIR}}/generate-tasks-and-ci"
     cmds:
       - cmd: |-
           exit_code=0
@@ -1212,7 +1213,7 @@ tasks:
     cmds:
       - task: lint-updateimagelabels-go
   lint-updateimagelabels-go:
-    dir: '{{.ROOT_DIR}}/update-image-labels'
+    dir: "{{.ROOT_DIR}}/update-image-labels"
     cmds:
       - cmd: |-
           exit_code=0
@@ -1255,21 +1256,21 @@ tasks:
     cmds:
       - task: lintfix-automergeprs-go
   lintfix-automergeprs-go:
-    dir: '{{.ROOT_DIR}}/auto-merge-prs'
+    dir: "{{.ROOT_DIR}}/auto-merge-prs"
     cmds:
       - cmd: gofmt -s -w .
   lintfix-generatetasksandci:
     cmds:
       - task: lintfix-generatetasksandci-go
   lintfix-generatetasksandci-go:
-    dir: '{{.ROOT_DIR}}/generate-tasks-and-ci'
+    dir: "{{.ROOT_DIR}}/generate-tasks-and-ci"
     cmds:
       - cmd: gofmt -s -w .
   lintfix-updateimagelabels:
     cmds:
       - task: lintfix-updateimagelabels-go
   lintfix-updateimagelabels-go:
-    dir: '{{.ROOT_DIR}}/update-image-labels'
+    dir: "{{.ROOT_DIR}}/update-image-labels"
     cmds:
       - cmd: gofmt -s -w .
   test:
@@ -1279,6 +1280,6 @@ tasks:
     cmds:
       - task: test-updateimagelabels-go
   test-updateimagelabels-go:
-    dir: '{{.ROOT_DIR}}/update-image-labels'
+    dir: "{{.ROOT_DIR}}/update-image-labels"
     cmds:
       - cmd: go test ./...
